@@ -1,0 +1,26 @@
+[[ -o interactive ]] || return 0
+
+typeset -g DOTFILES_ZSH_DIR="$HOME/.config/zsh"
+
+# Set machine-specific options before plugins and other modules load.
+if [[ -r "$DOTFILES_ZSH_DIR/options.local.zsh" ]]; then
+  source "$DOTFILES_ZSH_DIR/options.local.zsh"
+fi
+
+for _dotfiles_module in environment plugins history project-bins diagnostics; do
+  if [[ -r "$DOTFILES_ZSH_DIR/$_dotfiles_module.zsh" ]]; then
+    source "$DOTFILES_ZSH_DIR/$_dotfiles_module.zsh"
+  fi
+done
+unset _dotfiles_module
+
+# Final overrides are local to this machine and remain outside the repo.
+if [[ -r "$DOTFILES_ZSH_DIR/local.zsh" ]]; then
+  source "$DOTFILES_ZSH_DIR/local.zsh"
+fi
+
+# Machine preference: render cached status once, after local overrides load.
+if [[ "${DOTFILES_TOOL_STATUS_ON_STARTUP:-0}" == 1 && -z "${_DOTFILES_TOOL_STATUS_SHOWN:-}" ]]; then
+  typeset -g _DOTFILES_TOOL_STATUS_SHOWN=1
+  _dotfiles_tool_status_startup
+fi

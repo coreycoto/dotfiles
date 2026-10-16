@@ -1,0 +1,27 @@
+name: Dotfiles checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dotfiles-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Install validation tools
+        run: brew install chezmoi gitleaks shellcheck python@3.13 mise uv
+      - name: Check installation and shell behavior
+        run: ./scripts/check
+      - name: Scan Git history
+        run: gitleaks git --log-opts=--all --redact --no-banner --config .gitleaks.toml .

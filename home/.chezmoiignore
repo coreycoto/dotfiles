@@ -1,0 +1,4 @@
+# These files belong to the machine and are never managed by this repository.
+.gitconfig.local
+.config/zsh/options.local.zsh
+.config/zsh/local.zsh

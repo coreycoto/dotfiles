@@ -1,0 +1,16 @@
+# Copy selected entries to ~/.ssh/config.local and replace the placeholders.
+# This file and any real public keys/host details stay outside the repository.
+# Put host-specific entries before a Host * block; first values usually win.
+
+Host ssh-example
+    HostName ssh.example.invalid
+    User example-user
+    # For an agent-held key, reference its public key here; retain it locally.
+    IdentityFile ~/.ssh/example-key.pub
+    IdentitiesOnly yes
+    # Optional macOS 1Password agent, after explicitly enabling it in the app:
+    # IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+
+# Keep the current SSH_AUTH_SOCK agent unless you select another per host.
+# A local private-key workflow can instead use an existing IdentityFile and
+# IdentityAgent none, or its established OpenSSH agent. Never import keys here.

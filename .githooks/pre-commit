@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+command -v gitleaks >/dev/null 2>&1 || {
+  printf '%s\n' 'Install gitleaks before committing dotfiles.' >&2
+  exit 1
+}
+repo_root=$(git rev-parse --show-toplevel)
+# Gitleaks can return zero after logging a Git backend error. At error log
+# level, any stderr means the scan could not establish that changes are safe.
+umask 077
+scan_log=$(mktemp "${TMPDIR:-/tmp}/dotfiles-gitleaks.XXXXXXXX")
+trap 'rm -f "$scan_log"' EXIT
+trap 'exit 1' HUP INT TERM
+scan_status=0
+gitleaks git --pre-commit --staged --redact --no-banner --no-color \
+  --log-level error --config "$repo_root/.gitleaks.toml" "$repo_root" \
+  2>"$scan_log" || scan_status=$?
+if [ -s "$scan_log" ]; then
+  printf '%s\n' 'Gitleaks reported a scanner error; fix the scanner setup before committing.' >&2
+  exit 1
+fi
+if [ "$scan_status" -ne 0 ]; then
+  printf 'Gitleaks rejected staged changes (exit %s). Review them with a redacted verbose scan.\n' "$scan_status" >&2
+fi
+exit "$scan_status"

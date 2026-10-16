@@ -1,0 +1,6 @@
+# Optional host-local settings, saved in ~/.config/chezmoi/chezmoi.toml.
+# Set this to your reviewed checkout if using a non-default source directory.
+# sourceDir = "/path/to/reviewed/dotfiles"
+
+# Keep managed files private. Use the same mask for preview, apply, and verify.
+umask = 0o077

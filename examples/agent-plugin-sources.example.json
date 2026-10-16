@@ -1,0 +1,16 @@
+{
+  "marketplaces": [
+    {
+      "name": "my-local-plugins",
+      "url": "https://github.com/example/local-plugins.git",
+      "ref": "0000000000000000000000000000000000000000",
+      "optional": true,
+      "plugins": {
+        "example-plugin": "1.0.0"
+      },
+      "sparse_paths": [
+        ".agents/plugins"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "editor.inlineSuggest.enabled": true,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "diffEditor.renderSideBySide": true,
+  "diffEditor.experimental.showMoves": true,
+  "diffEditor.hideUnchangedRegions.enabled": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "terminal.integrated.suggest.enabled": false,
+  "terminal.integrated.initialHint": false,
+  "workbench.view.alwaysShowHeaderActions": true,
+  "biome.requireConfiguration": true,
+  "extensions.autoUpdate": false
+}

@@ -1,0 +1,6 @@
+{{- $plugins := list -}}
+{{- $local := joinPath .chezmoi.homeDir ".config" "dotfiles" "agent-plugins.local.json" -}}
+{{- if stat $local -}}
+{{- $plugins = (include $local | fromJson).plugins -}}
+{{- end -}}
+{{ dict "name" "codex-home-local-marketplace" "interface" (dict "displayName" "Local Plugins") "plugins" $plugins | toPrettyJson }}

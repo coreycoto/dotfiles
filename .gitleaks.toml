@@ -1,0 +1,11 @@
+title = "Dotfiles secrets"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "uidotsh-token"
+description = "Literal ui.sh token assignment"
+regex = '''(?i)UIDOTSH_TOKEN\s*=\s*["']?([a-z0-9][a-z0-9_.:/+=-]{7,})'''
+secretGroup = 1
+keywords = ["UIDOTSH_TOKEN"]

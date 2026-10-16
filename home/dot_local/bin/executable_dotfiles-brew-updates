@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Print validated Homebrew package updates without mixing progress into data."""
+
+import json
+import re
+import subprocess
+import sys
+
+
+def main():
+    if sys.argv[1:]:
+        raise ValueError("Usage: dotfiles-brew-updates")
+    result = subprocess.run(
+        ["brew", "outdated", "--json=v2"],
+        capture_output=True, text=True, check=True, timeout=60,
+    )
+    # Normal API download progress is harmless. Warnings can mean stale
+    # metadata, so do not claim a complete update check in that case.
+    if re.search(r"\b(?:Warning|Error):", result.stderr, re.IGNORECASE):
+        raise ValueError("Homebrew reported a warning or error")
+    data = json.loads(result.stdout)
+    rows = []
+    for kind in ("formulae", "casks"):
+        if not isinstance(data[kind], list):
+            raise ValueError("Invalid Homebrew package list")
+        for item in data[kind]:
+            name = item["name"]
+            versions = item["installed_versions"]
+            latest = item["current_version"]
+            if not re.fullmatch(r"[a-zA-Z0-9@+._/-]+", name):
+                raise ValueError("Invalid Homebrew package name")
+            if not isinstance(versions, list) or not versions:
+                raise ValueError("Invalid installed versions")
+            # Casks may use comma-separated build numbers or spaces; reject
+            # terminal control characters and delimiters used by the shell.
+            for version in [*versions, latest]:
+                if not isinstance(version, str) or not re.fullmatch(r"[a-zA-Z0-9+._, ()/-]+", version):
+                    raise ValueError("Invalid Homebrew version")
+            pinned = " [pinned]" if item.get("pinned") else ""
+            rows.append(f"{name}: {', '.join(versions)} -> {latest}{pinned}")
+    # Validate the whole response before exposing any rows.
+    for row in rows:
+        print(row)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        raise SystemExit(1)

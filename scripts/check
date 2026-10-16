@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repo_root"
+for tool in python3 zsh ssh chezmoi gitleaks shellcheck mise uv; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    printf 'Missing validation dependency: %s\n' "$tool" >&2
+    exit 1
+  }
+done
+python3 -m unittest discover -s tests -v
+shellcheck scripts/check scripts/enable-hooks .githooks/pre-commit home/dot_profile
+gitleaks dir --redact --no-banner --config .gitleaks.toml .
+git diff --check

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Checks"
+  short_description: "Interpret secret, shell, and Git LFS checks"
+  default_prompt: "Use $repository-checks to choose checks for this change and interpret their results."

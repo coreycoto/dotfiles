@@ -1,0 +1,10 @@
+{
+  "astral-sh.ty": "2026.76.0",
+  "biomejs.biome": "3.7.1",
+  "charliermarsh.ruff": "2026.84.0",
+  "editorconfig.editorconfig": "0.18.2",
+  "github.vscode-github-actions": "0.32.3",
+  "ms-python.debugpy": "2026.6.0",
+  "ms-python.python": "2026.6.0",
+  "oven.bun-vscode": "0.0.32"
+}

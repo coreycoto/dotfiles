@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dotfiles Maintenance"
+  short_description: "Preview and validate portable chezmoi changes"
+  default_prompt: "Use $dotfiles-maintenance to add a portable preference and validate its chezmoi preview."

@@ -1,0 +1,7 @@
+# Host aliases, identity selection, and agent preferences stay in this local file.
+# Include it first so reviewed host-specific settings take precedence.
+Include {{ joinPath .chezmoi.homeDir ".ssh" "config.local" | quote }}
+
+Host *
+    StrictHostKeyChecking ask
+    ForwardAgent no

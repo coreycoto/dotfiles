@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "name": "my-local-plugin",
+      "source": {"source": "local", "path": "./plugins/my-local-plugin"},
+      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "category": "Productivity"
+    }
+  ]
+}

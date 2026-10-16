@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Workflow"
+  short_description: "Choose connector or gh and verify remote PR state"
+  default_prompt: "Use $github-workflow to inspect the current PR revision and CI status."

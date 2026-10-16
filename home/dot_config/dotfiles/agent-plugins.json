@@ -1,0 +1,21 @@
+{
+  "version": 3,
+  "min_codex": "0.162.0",
+  "marketplaces": [
+    {
+      "name": "agent-plugins",
+      "url": "https://github.com/coreycoto/agent-plugins.git",
+      "ref": "6523011c94f94afb716d51efcf4ed5be09a3e203",
+      "optional": false,
+      "plugins": {
+        "communication": "0.10.2",
+        "product-development": "0.10.2",
+        "product-management": "0.10.2",
+        "project-management": "0.10.2"
+      },
+      "sparse_paths": [
+        ".agents/plugins"
+      ]
+    }
+  ]
+}

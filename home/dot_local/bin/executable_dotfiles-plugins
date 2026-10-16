@@ -1,0 +1,659 @@
+#!/usr/bin/env python3
+"""Preview or update pinned, locally built plugins through native Codex."""
+
+import argparse
+import copy
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import queue
+import shutil
+import subprocess
+import tempfile
+import threading
+import tomllib
+from datetime import datetime, timezone
+
+
+SLUG = r"[a-z0-9][a-z0-9_.-]*"
+VERSION = r"[0-9]+\.[0-9]+\.[0-9]+"
+URL = r"https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git"
+OWNER = "dotfiles-agent-plugins"
+PILOT_SELECTOR = "product-development@agent-plugins-pr3-pilot"
+
+
+def resolve_codex(codex):
+    """Resolve an installed Mise binary before switching to an isolated home."""
+    if not codex:
+        return None
+    codex = shutil.which(codex) or codex
+    mise = shutil.which("mise")
+    if mise and Path(codex).resolve() == Path(mise).resolve():
+        result = subprocess.run([mise, "--cd", str(Path.home()), "which", "codex"],
+                                env=dict(os.environ, MISE_OFFLINE="1"),
+                                capture_output=True, text=True, timeout=15)
+        native = Path(result.stdout.strip())
+        if result.returncode or not native.is_file() or not os.access(native, os.X_OK):
+            raise ValueError("Codex is not installed; install it explicitly before setup")
+        return str(native)
+    return codex
+
+
+class Rpc:
+    """A short-lived stdio client; never logs configuration or server diagnostics."""
+
+    def __init__(self, codex, home):
+        env = dict(os.environ, HOME=str(home), CODEX_HOME=str(home / ".codex"))
+        self.process = subprocess.Popen(
+            [codex, "app-server", "--stdio"], cwd=home, env=env,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        self.messages = queue.Queue()
+        self.next_id = 0
+        threading.Thread(target=self.read, daemon=True).start()
+
+    def read(self):
+        for line in self.process.stdout:
+            try:
+                self.messages.put(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        self.messages.put(None)
+
+    def call(self, method, params):
+        self.next_id += 1
+        self.process.stdin.write(json.dumps({"id": self.next_id, "method": method, "params": params}) + "\n")
+        self.process.stdin.flush()
+        while True:
+            try:
+                message = self.messages.get(timeout=30)
+            except queue.Empty:
+                raise ValueError(f"Codex timed out during {method}") from None
+            if message is None:
+                raise ValueError(f"Codex stopped during {method}")
+            if message.get("id") == self.next_id:
+                if "error" in message:
+                    raise ValueError(f"Codex rejected {method}; inspect configuration locally")
+                return message["result"]
+
+    def close(self):
+        self.process.stdin.close()
+        self.process.terminate()
+        try:
+            self.process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+        self.process.stdout.close()
+
+
+
+def manifest(path, local_path=None):
+    data = json.loads(path.read_text())
+    if local_path is not None and local_path.exists():
+        local = json.loads(local_path.read_text())
+        if (data.get("version") != 3 or not isinstance(local, dict)
+                or set(local) != {"marketplaces"} or not isinstance(local["marketplaces"], list)):
+            raise ValueError("Local plugin sources require a version-3 base and a marketplaces list")
+        if any(not isinstance(source, dict) or source.get("optional") is not True
+               for source in local["marketplaces"]):
+            raise ValueError("Local plugin sources must be optional; first adoption requires --private")
+        data["marketplaces"] += local["marketplaces"]
+    native = data.get("version") == 3
+    expected = {"version", "min_codex", "marketplaces"} | (set() if native else {"retire"})
+    if set(data) != expected or data["version"] not in {2, 3}:
+        raise ValueError("Unsupported plugin declaration")
+    if not re.fullmatch(VERSION, data["min_codex"]) or not data["marketplaces"]:
+        raise ValueError("An exact minimum Codex version and source list are required")
+    names, bundles = set(), set()
+    for source in data["marketplaces"]:
+        fields = {"name", "url", "ref", "plugins", "optional"} | (set() if native else {"bundle"})
+        if set(source) not in (fields, fields | ({"sparse_paths"} if native else {"replaces"})):
+            raise ValueError("Unexpected plugin source fields")
+        name = source["name"]
+        if not re.fullmatch(SLUG, name) or name in names:
+            raise ValueError("Marketplace names must be unique slugs")
+        names.add(name)
+        if not re.fullmatch(URL, source["url"]) or ("replaces" in source and not re.fullmatch(URL, source["replaces"])):
+            raise ValueError("Use a credential-free GitHub HTTPS repository URL")
+        if not re.fullmatch(r"[0-9a-f]{40}", source["ref"]):
+            raise ValueError("Plugin sources must use immutable commit SHAs")
+        if not isinstance(source["plugins"], dict) or not source["plugins"]:
+            raise ValueError("Select at least one plugin explicitly")
+        for plugin, version in source["plugins"].items():
+            if not re.fullmatch(SLUG, plugin) or not re.fullmatch(VERSION, version):
+                raise ValueError("Use plugin slugs and exact release versions")
+        if not isinstance(source["optional"], bool):
+            raise ValueError("Use an explicit optional setting")
+        if native and source.get("sparse_paths", []) not in ([], [".agents/plugins"]):
+            raise ValueError("Only the declared plugin catalog directory may be sparse")
+        if not native:
+            if not re.fullmatch(SLUG, source["bundle"]) or source["bundle"] in bundles:
+                raise ValueError("Use unique bundle slugs")
+            bundles.add(source["bundle"])
+    retired = set()
+    for entry in data.get("retire", []):
+        if set(entry) != {"plugin_id", "version"} or not re.fullmatch(SLUG + "@" + SLUG, entry["plugin_id"]):
+            raise ValueError("Retirement requires an exact native plugin identity")
+        if not re.fullmatch(VERSION, entry["version"]) or entry["plugin_id"] in retired:
+            raise ValueError("Retirement requires unique identities and exact old versions")
+        retired.add(entry["plugin_id"])
+    return data
+
+
+def run(args, home, *, structured=True):
+    env = dict(os.environ, HOME=str(home), CODEX_HOME=str(home / ".codex"),
+               PYTHONDONTWRITEBYTECODE="1", GIT_TERMINAL_PROMPT="0")
+    result = subprocess.run(args, cwd=home, env=env, text=True, capture_output=True, timeout=60)
+    if result.returncode:
+        # Native diagnostics can contain machine configuration; do not forward them.
+        raise ValueError(f"Native command failed with exit {result.returncode}; inspect locally")
+    return json.loads(result.stdout) if structured else result.stdout.strip()
+
+
+def configuration(home):
+    path = home / ".codex/config.toml"
+    if (home / ".codex").is_symlink() or path.is_symlink():
+        raise ValueError("Refusing a symlinked Codex configuration")
+    return tomllib.loads(path.read_text()) if path.exists() else {}
+
+
+def inventory(codex, home):
+    data = run([codex, "plugin", "list", "--json"], home)
+    if not isinstance(data.get("installed"), list):
+        raise ValueError("Codex did not establish installed plugin state")
+    result = {}
+    for item in data["installed"]:
+        name = item.get("name")
+        marketplace = item.get("marketplaceName")
+        if not name or not marketplace:
+            raise ValueError("Codex returned an incomplete plugin identity")
+        selector = f"{name}@{marketplace}"
+        if selector in result:
+            raise ValueError("Codex returned duplicate installed plugin identities")
+        result[selector] = item
+    return result
+
+
+def verify_checkout(root, home, source):
+    revision = run(["git", "-C", str(root), "rev-parse", "HEAD"], home, structured=False)
+    dirty = run(["git", "-C", str(root), "status", "--porcelain", "--untracked-files=all", "--ignored=matching"], home, structured=False)
+    if revision != source["ref"]:
+        raise ValueError("Marketplace checkout does not match the immutable source pin")
+    if not dirty:
+        return
+    marker = ".codex-marketplace-install.json"
+    if dirty not in {f"?? {marker}", f"!! {marker}"}:
+        raise ValueError("Marketplace checkout does not match the immutable source pin")
+    path = root / marker
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Expected regular native marketplace installation metadata")
+    expected = {
+        "source_type": "git", "source": source["url"],
+        "ref_name": source["ref"], "sparse_paths": [], "revision": source["ref"],
+    }
+    if json.loads(path.read_text()) != expected:
+        raise ValueError("Native marketplace installation metadata differs from the source pin")
+
+
+def package_files(root):
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("Expected a regular installed plugin directory")
+    result = {}
+    for path in sorted(root.rglob('*')):
+        if path.is_symlink():
+            raise ValueError("A plugin package contains an unexpected symlink")
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+            result[str(path.relative_to(root))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
+
+
+def verify_cached_package(home, source, publisher, name, version):
+    # This is the installed layout observed with the supported native client.
+    # A future incompatible layout must fail visibly rather than weaken proof.
+    cached = home / ".codex/plugins/cache" / source["name"] / name / version
+    expected = Path(publisher["packages"][name])
+    if package_files(cached) != package_files(expected):
+        raise ValueError("Installed plugin files differ from the immutable publisher package")
+
+
+def regular_paths(path, home):
+    for part in (path, *path.parents):
+        if part == home.parent:
+            break
+        if part.is_symlink():
+            raise ValueError("Refusing a symlinked plugin storage path")
+
+
+def source_checkout(home, cache, source):
+    root = cache / "sources" / source["name"] / source["ref"]
+    regular_paths(root, home)
+    if not root.exists():
+        root.mkdir(parents=True, mode=0o700)
+        run(["git", "init", "--quiet", str(root)], home, structured=False)
+        run(["git", "-C", str(root), "remote", "add", "origin", source["url"]], home, structured=False)
+        run(["git", "-C", str(root), "fetch", "--quiet", "--depth=1", "origin", source["ref"]], home, structured=False)
+        run(["git", "-C", str(root), "checkout", "--quiet", "--detach", "FETCH_HEAD"], home, structured=False)
+    remote = run(["git", "-C", str(root), "remote", "get-url", "origin"], home, structured=False)
+    if remote != source["url"]:
+        raise ValueError("Cached source belongs to another publisher")
+    verify_checkout(root, home, source)
+    catalog = json.loads((root / ".agents/plugins/marketplace.json").read_text())
+    if catalog.get("name") != source["name"]:
+        raise ValueError("Publisher marketplace identity differs")
+    for name, version in source["plugins"].items():
+        metadata = json.loads((root / "plugins" / name / "plugin.json").read_text())
+        if metadata.get("name") != name or metadata.get("version") != version:
+            raise ValueError("Publisher plugin identity or version differs")
+    return root
+
+
+def build(home, checkout, destination):
+    # Use the publisher's one authored builder. Only its Codex projection is needed.
+    import sys
+    program = ("import runpy,sys; from pathlib import Path; "
+               "r=Path(sys.argv[1]); d=Path(sys.argv[2]); "
+               "b=runpy.run_path(str(r/'scripts/build_codex_package.py')); "
+               "p=b['marketplace_projection'](r); b['write_generated'](d,p); "
+               "assert b['tree_matches'](d,p)")
+    run([sys.executable, "-c", program, str(checkout), str(destination)], home, structured=False)
+
+
+def state_file(cache):
+    path = cache / "state.json"
+    if path.is_symlink():
+        raise ValueError("Refusing symlinked plugin ownership metadata")
+    if not path.exists():
+        return {"owner": OWNER, "bundles": {}}
+    data = json.loads(path.read_text())
+    if data.get("owner") != OWNER or not isinstance(data.get("bundles"), dict):
+        raise ValueError("Plugin storage is not owned by this updater")
+    return data
+
+
+def stored_bundle(cache, source, state):
+    target = cache / source["bundle"]
+    if not target.exists():
+        return
+    owned = state["bundles"].get(source["bundle"])
+    if not owned or package_files(target) != owned["files"]:
+        raise ValueError("Local bundle is unowned or edited; preserve it for review")
+
+
+def snapshot(home, paths):
+    root = home / ".local/state/agent-plugins/backups"
+    regular_paths(root, home)
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    backup = Path(tempfile.mkdtemp(prefix=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-"), dir=root))
+    for path in paths:
+        regular_paths(path, home)
+        if path.exists():
+            destination = backup / path.relative_to(home)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            if path.is_dir():
+                package_files(path)  # Reject symlinks before following a tree.
+                shutil.copytree(path, destination)
+            else:
+                shutil.copy2(path, destination)
+    return backup
+
+
+def write_state(cache, state):
+    path = cache / "state.json"
+    temporary = cache / "state.pending.json"
+    if temporary.exists() or temporary.is_symlink():
+        raise ValueError("An unfinished ownership update needs review")
+    temporary.write_text(json.dumps(state, indent=2) + "\n")
+    temporary.replace(path)
+
+
+def bootstrap(home, desired, codex, apply, include_private=False, retire_pilot_path=None):
+    if desired["version"] == 3:
+        if retire_pilot_path is not None:
+            raise ValueError("Pilot retirement requires its reviewed version-2 declaration")
+        return bootstrap_native(home, desired, codex, apply, include_private)
+    if not codex:
+        raise ValueError("Codex is required; installation remains an explicit prerequisite")
+    if retire_pilot_path is not None and not Path(retire_pilot_path).is_absolute():
+        raise ValueError("The reviewed pilot source must be an absolute local path")
+    with tempfile.TemporaryDirectory(prefix="dotfiles-codex-version-") as probe:
+        probe_home = Path(probe)
+        (probe_home / ".codex").mkdir(mode=0o700)
+        version_text = run([codex, "--version"], probe_home, structured=False)
+    match = re.search(r"\b(\d+\.\d+\.\d+)\b", version_text)
+    version = match.group(1) if match else None
+    if not version or tuple(map(int, version.split('.'))) < tuple(map(int, desired["min_codex"].split('.'))):
+        raise ValueError("Codex is older than the declared minimum")
+    config = configuration(home)
+    installed = inventory(codex, home) if (home / ".codex").is_dir() else {}
+    sources = [s for s in desired["marketplaces"] if not s["optional"] or include_private or any(
+        installed.get(f"{name}@{s['name']}", {}).get("enabled") is True for name in s["plugins"])]
+    cache = home / ".local/share/agent-plugins"
+    regular_paths(cache, home)
+    state = state_file(cache)
+    for source in sources:
+        stored_bundle(cache, source, state)
+        for name in source["plugins"]:
+            selector = f"{name}@{source['name']}"
+            if config.get("plugins", {}).get(selector, {}).get("enabled") is False:
+                raise ValueError(f"Selected plugin is disabled: {selector}; preserve or review that preference")
+    retired = {x["plugin_id"]: x for x in desired["retire"]}
+    removals = []
+    for selector, old in retired.items():
+        if selector in installed:
+            if installed[selector]["version"] != old["version"]:
+                raise ValueError("An obsolete plugin has an unreviewed version; preserve it for review")
+            removals.append(selector)
+    replace = set()
+    publishers = {s["name"] for s in sources}
+    for source in sources:
+        existing = config.get("marketplaces", {}).get(source["name"])
+        expected = {"source_type": "local", "source": str(cache / source["bundle"])}
+        if existing and any(existing.get(k) != v for k, v in expected.items()):
+            if existing.get("source_type") != "git" or existing.get("source") not in {source["url"], source.get("replaces")}:
+                raise ValueError("A same-name catalog belongs to an unreviewed source")
+            replace.add(source["name"])
+    obsolete_catalogs = {selector.split('@')[1] for selector in retired} - publishers
+    declarations = {s["name"]: s for s in desired["marketplaces"]}
+    retire_catalogs = set()
+    for name in obsolete_catalogs:
+        existing = config.get("marketplaces", {}).get(name)
+        if not existing:
+            continue
+        declaration = declarations.get(name)
+        if declaration and (existing.get("source_type") != "git"
+                            or existing.get("source") != declaration.get("replaces")):
+            # A disabled optional private plugin still owns its catalog.
+            continue
+        if not declaration:
+            if (name != PILOT_SELECTOR.split('@')[1] or PILOT_SELECTOR not in retired
+                    or retire_pilot_path is None):
+                raise ValueError("Legacy catalog source is unreviewed; preserve it or specify --retire-pilot-path for the pilot")
+            expected = {"source_type": "local", "source": str(retire_pilot_path)}
+            if any(existing.get(k) != v for k, v in expected.items()):
+                raise ValueError("Legacy pilot catalog differs from the reviewed local source; preserve it for review")
+        retire_catalogs.add(name)
+    affected = replace | retire_catalogs
+    allowed = set(retired) | {f"{name}@{s['name']}" for s in sources for name in s["plugins"]}
+    for selector, item in installed.items():
+        if item["marketplaceName"] in affected:
+            if selector not in allowed:
+                raise ValueError("Catalog retirement would affect an unrelated installed plugin")
+            if selector not in removals:
+                removals.append(selector)
+    actions = [{"kind": "build", "source": s["name"], "ref": s["ref"]} for s in sources]
+    actions += [{"kind": "plugin_remove", "plugin_id": p} for p in removals]
+    actions += [{"kind": "marketplace_remove", "name": n} for n in sorted(affected)]
+    actions += [{"kind": "marketplace_add", "name": s["name"], "path": str(cache / s["bundle"])}
+                for s in sources if s["name"] not in config.get("marketplaces", {}) or s["name"] in replace]
+    actions += [{"kind": "plugin_add", "plugin_id": f"{name}@{s['name']}", "version": v}
+                for s in sources for name, v in s["plugins"].items()]
+    report = {"applied": False, "codex": version, "planned_actions": actions, "completed_actions": [],
+              "role_installation": "Requires each plugin's native Setup form", "hook_approval": "Native Codex review",
+              "registry_publication_required": False}
+    if not apply:
+        return report
+    cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+    selected = set(allowed)
+    paths = [home / ".codex/config.toml", cache / "state.json"]
+    for source in sources:
+        paths.append(cache / source["bundle"])
+    for selector in selected:
+        name, marketplace = selector.split('@')
+        paths.append(home / ".codex/plugins/cache" / marketplace / name)
+    for name in {p.split('@')[0] for p in selected}:
+        paths += [home / ".codex/agents" / name, home / ".codex/agent-plugin-state" / name]
+    try:
+        with tempfile.TemporaryDirectory(prefix=".build-", dir=cache) as staging:
+            staged = {}
+            for source in sources:
+                report["current_action"] = {"kind": "build", "source": source["name"], "ref": source["ref"]}
+                checkout = source_checkout(home, cache, source)
+                destination = Path(staging) / source["bundle"]
+                build(home, checkout, destination)
+                staged[source["bundle"]] = destination
+                report["completed_actions"].append({"kind": "build", "source": source["name"], "ref": source["ref"]})
+            if configuration(home) != config:
+                raise ValueError("Codex configuration changed during preparation; review the new state")
+            report["backup"] = str(snapshot(home, paths))
+            for source in sources:
+                report["current_action"] = {"kind": "activate_bundle", "source": source["name"]}
+                target = cache / source["bundle"]
+                stored_bundle(cache, source, state)
+                if target.exists():
+                    shutil.rmtree(target)  # Owned, unchanged build only; a scoped backup exists.
+                staged[source["bundle"]].replace(target)
+                state["bundles"][source["bundle"]] = {"ref": source["ref"], "files": package_files(target)}
+            write_state(cache, state)
+        (home / ".codex").mkdir(mode=0o700, exist_ok=True)
+        for action in actions:
+            kind = action["kind"]
+            if kind == "build":
+                continue
+            report["current_action"] = action
+            if kind == "plugin_remove":
+                run([codex, "plugin", "remove", action["plugin_id"], "--json"], home)
+            elif kind == "marketplace_remove":
+                run([codex, "plugin", "marketplace", "remove", action["name"], "--json"], home)
+            elif kind == "marketplace_add":
+                run([codex, "plugin", "marketplace", "add", action["path"], "--json"], home)
+            else:
+                run([codex, "plugin", "add", action["plugin_id"], "--json"], home)
+            report["completed_actions"].append(action)
+        after = configuration(home)
+        report["current_action"] = {"kind": "verify_preservation_and_installed_files"}
+        permitted_plugins = selected
+        permitted_catalogs = publishers | retire_catalogs
+        before_other = {k: v for k, v in config.items() if k not in {"plugins", "marketplaces"}}
+        after_other = {k: v for k, v in after.items() if k not in {"plugins", "marketplaces"}}
+        if before_other != after_other:
+            raise ValueError("Unrelated Codex settings did not pass preservation verification")
+        for key, permitted in (("plugins", permitted_plugins), ("marketplaces", permitted_catalogs)):
+            if ({k: v for k, v in config.get(key, {}).items() if k not in permitted}
+                    != {k: v for k, v in after.get(key, {}).items() if k not in permitted}):
+                raise ValueError("Unrelated plugin configuration did not pass preservation verification")
+        installed = inventory(codex, home)
+        report["verified_plugins"] = []
+        for source in sources:
+            expected = {"source_type": "local", "source": str(cache / source["bundle"])}
+            configured = after.get("marketplaces", {}).get(source["name"], {})
+            if any(configured.get(k) != v for k, v in expected.items()):
+                raise ValueError("Final local catalog source differs")
+            for name, v in source["plugins"].items():
+                selector = f"{name}@{source['name']}"
+                item = installed.get(selector, {})
+                if item.get("version") != v or item.get("enabled") is not True:
+                    raise ValueError("Final installed version or enablement differs")
+                publisher = {"packages": {name: str(cache / source["bundle"] / "plugins" / name)}}
+                verify_cached_package(home, source, publisher, name, v)
+                report["verified_plugins"].append({"plugin_id": selector, "version": v,
+                    "cached_files_match_source": True, "source_ref": source["ref"]})
+        if any(selector in installed for selector in retired):
+            raise ValueError("An obsolete plugin remains installed")
+        report.update(applied=True, unrelated_settings_preserved=True, authentication="unverified",
+                      current_task_discovery="unverified", next_action="Open each plugin's Setup in Codex; approve its hooks and native agent form.")
+        report.pop("current_action", None)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        report["failed_action"] = report.pop("current_action", {"kind": "prepare"})
+        print(json.dumps(report, indent=2))
+        raise ValueError("Plugin update stopped; retain this partial receipt and inspect local state before retrying") from None
+    return report
+
+
+def native_config_write(home, codex, before, edits):
+    """Write only reviewed keys using the native configuration version."""
+    home = home.resolve()
+    (home / ".codex").mkdir(mode=0o700, exist_ok=True)
+    target = home / ".codex/config.toml"
+    expected = copy.deepcopy(before)
+    for key, value in edits.items():
+        *parents, leaf = key.split(".")
+        table = expected
+        for parent in parents:
+            table = table.setdefault(parent, {})
+        if value is None:
+            table.pop(leaf, None)
+        else:
+            table[leaf] = value
+    rpc = Rpc(codex, home)
+    try:
+        rpc.call("initialize", {"clientInfo": {"name": "dotfiles-plugins", "version": "3"}})
+        rpc.process.stdin.write(json.dumps({"method": "initialized"}) + "\n")
+        rpc.process.stdin.flush()
+        observed = rpc.call("config/read", {"includeLayers": True, "cwd": str(home)})
+        layer = next((x for x in observed.get("layers") or []
+                      if x["name"].get("type") == "user"
+                      and x["name"].get("file") == str(target)
+                      and not x["name"].get("profile")), None)
+        if layer is None or layer["config"] != before:
+            raise ValueError("Codex user configuration changed or its version is unavailable")
+        rpc.call("config/batchWrite", {
+            "edits": [{"keyPath": k, "value": v, "mergeStrategy": "replace"} for k, v in edits.items()],
+            "filePath": str(target), "expectedVersion": layer["version"], "reloadUserConfig": False,
+        })
+        if configuration(home) != expected:
+            raise ValueError("Native configuration preservation verification failed")
+    finally:
+        rpc.close()
+    return expected
+
+
+def bootstrap_native(home, desired, codex, apply, include_private=False):
+    """Pin native Git catalogs without removing installed plugins or local bundles."""
+    if not codex:
+        raise ValueError("Codex is an explicit prerequisite")
+    with tempfile.TemporaryDirectory(prefix="dotfiles-codex-version-") as probe:
+        probe_home = Path(probe)
+        (probe_home / ".codex").mkdir(mode=0o700)
+        text = run([codex, "--version"], probe_home, structured=False)
+    match = re.search(r"\b(\d+\.\d+\.\d+)\b", text)
+    if not match or tuple(map(int, match[1].split('.'))) < tuple(map(int, desired["min_codex"].split('.'))):
+        raise ValueError("Codex is older than the declared minimum")
+    before = configuration(home)
+    installed = inventory(codex, home) if (home / ".codex").is_dir() else {}
+    sources = [s for s in desired["marketplaces"] if not s["optional"] or include_private or any(
+        installed.get(f"{name}@{s['name']}", {}).get("enabled") is True for name in s["plugins"])]
+    cache = home / ".local/share/agent-plugins"
+    regular_paths(cache, home)
+    edits, additions, actions = {}, [], []
+    for source in sources:
+        name = source["name"]
+        existing = before.get("marketplaces", {}).get(name, {})
+        expected = {"source_type": "git", "source": source["url"], "ref_name": source["ref"],
+                    "sparse_paths": source.get("sparse_paths", [])}
+        if existing and (existing.get("source_type") != "git" or existing.get("source") != source["url"]):
+            raise ValueError("A same-name catalog belongs to an unreviewed source; preserve it")
+        if existing.get("sparse_paths", []) not in ([], expected["sparse_paths"]):
+            raise ValueError("Existing catalog sparse paths differ from the reviewed declaration")
+        actions.append({"kind": "verify_source", "source": name, "ref": source["ref"]})
+        if any(existing.get(k) != v for k, v in expected.items()):
+            edits[f"marketplaces.{name}"] = dict(existing, **expected)
+            actions.append({"kind": "configure_marketplace", "name": name, "ref": source["ref"]})
+        for plugin, version in source["plugins"].items():
+            selector = f"{plugin}@{name}"
+            item = installed.get(selector, {})
+            if (before.get("plugins", {}).get(selector, {}).get("enabled") is False
+                    or item.get("enabled") is False):
+                raise ValueError(f"Selected plugin is disabled: {selector}; preserve or review that preference")
+            if item.get("version") != version or item.get("enabled") is not True:
+                action = {"kind": "plugin_add", "plugin_id": selector, "version": version}
+                additions.append(action)
+                actions.append(action)
+    report = {"applied": False, "codex": match[1], "planned_actions": actions, "completed_actions": [],
+              "registry_publication_required": False, "registry_authentication": "machine-local",
+              "role_installation": "Each plugin's native Setup form", "hook_approval": "Native Codex review"}
+    if not apply:
+        return report
+    cache.mkdir(parents=True, exist_ok=True, mode=0o700)
+    try:
+        with tempfile.TemporaryDirectory(prefix=".verify-", dir=cache) as scratch:
+            packages = {}
+            for source in sources:
+                report["current_action"] = {"kind": "verify_source", "source": source["name"]}
+                checkout = source_checkout(home, cache, source)
+                destination = Path(scratch) / source["name"]
+                build(home, checkout, destination)
+                for name, version in source["plugins"].items():
+                    packages[(source["name"], name)] = destination / "plugins" / name
+                    item = installed.get(f"{name}@{source['name']}", {})
+                    if item.get("version") == version:
+                        verify_cached_package(home, source, {"packages": {name: str(packages[(source['name'], name)])}},
+                                              name, version)
+                report["completed_actions"].append(report["current_action"])
+            if configuration(home) != before:
+                raise ValueError("Codex configuration changed during source verification")
+            if edits or additions:
+                paths = [home / ".codex/config.toml"]
+                paths += [home / ".codex/plugins/cache" / a["plugin_id"].split('@')[1]
+                          / a["plugin_id"].split('@')[0] for a in additions]
+                report["backup"] = str(snapshot(home, paths))
+            expected = before
+            if edits:
+                report["current_action"] = {"kind": "configure_marketplaces"}
+                expected = native_config_write(home, codex, before, edits)
+                report["completed_actions"].append(report["current_action"])
+            for action in additions:
+                report["current_action"] = action
+                run([codex, "plugin", "add", action["plugin_id"], "--json"], home)
+                report["completed_actions"].append(action)
+            after = configuration(home)
+            report["current_action"] = {"kind": "verify_preservation_and_installed_files"}
+            selected = {f"{name}@{s['name']}" for s in sources for name in s["plugins"]}
+            if ({k: v for k, v in after.items() if k != "plugins"}
+                    != {k: v for k, v in expected.items() if k != "plugins"}
+                    or {k: v for k, v in after.get("plugins", {}).items() if k not in selected}
+                    != {k: v for k, v in before.get("plugins", {}).items() if k not in selected}):
+                raise ValueError("Unrelated Codex settings changed")
+            final = inventory(codex, home) if edits or additions else installed
+            report["verified_plugins"] = []
+            for source in sources:
+                for name, version in source["plugins"].items():
+                    selector = f"{name}@{source['name']}"
+                    item = final.get(selector, {})
+                    if item.get("version") != version or item.get("enabled") is not True:
+                        raise ValueError("Final installed version or enablement differs")
+                    verify_cached_package(home, source, {"packages": {name: str(packages[(source['name'], name)])}},
+                                          name, version)
+                    report["verified_plugins"].append({"plugin_id": selector, "version": version,
+                        "cached_files_match_source": True, "source_ref": source["ref"]})
+        report.update(applied=True, unrelated_settings_preserved=True, authentication="unverified",
+                      current_task_discovery="unverified", next_action="Use each plugin's Setup when hooks or agents change.")
+        report.pop("current_action", None)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        report["failed_action"] = report.pop("current_action", {"kind": "prepare"})
+        print(json.dumps(report, indent=2))
+        raise ValueError("Plugin update stopped; retain this partial receipt and inspect local state before retrying") from None
+    return report
+
+
+def main(default_manifest=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--home", type=Path, default=Path.home())
+    parser.add_argument("--manifest", type=Path, default=default_manifest or Path.home() / ".config/dotfiles/agent-plugins.json")
+    parser.add_argument("--local-manifest", type=Path, help="Optional local catalog additions; defaults to ~/.config/dotfiles/agent-plugin-sources.local.json")
+    parser.add_argument("--codex", default=shutil.which("codex"))
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--private", action="store_true", help="Also adopt optional local catalogs; subsequent updates remember enabled selections.")
+    parser.add_argument("--retire-pilot-path", help="One-time pilot migration: its reviewed exact absolute local catalog source; unrelated catalogs are never authorized by this option.")
+    args = parser.parse_args()
+    os.umask(0o077)
+    try:
+        if not args.home.is_dir():
+            raise ValueError("--home must name an existing user home")
+        if args.local_manifest is not None and not args.local_manifest.is_file():
+            raise ValueError("--local-manifest must name an existing file")
+        local_manifest = args.local_manifest or args.home / ".config/dotfiles/agent-plugin-sources.local.json"
+        report = bootstrap(args.home.resolve(), manifest(args.manifest, local_manifest), resolve_codex(args.codex), args.apply,
+                           args.private, args.retire_pilot_path)
+    except (OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError) as error:
+        if isinstance(error, ValueError) and not isinstance(error, (json.JSONDecodeError, tomllib.TOMLDecodeError)):
+            parser.exit(2, str(error) + "\n")
+        parser.exit(2, "Plugin operation failed; inspect local inputs without publishing configuration.\n")
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()

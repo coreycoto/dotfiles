@@ -1,0 +1,40 @@
+# Portable personal defaults. Preview the bounded merge with
+# scripts/codex-preferences.py. Purpose-specific model routing belongs to agents.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "max"
+plan_mode_reasoning_effort = "xhigh"
+personality = "pragmatic"
+service_tier = "priority"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+default_permissions = ":workspace"
+
+[features]
+mcp_2026_07_28 = true
+multi_agent = true
+fast_mode = true
+memories = true
+goals = true
+js_repl = false
+
+[memories]
+generate_memories = true
+use_memories = true
+extract_model = "gpt-6-luna"
+consolidation_model = "gpt-6.1-sol"
+disable_on_external_context = false
+
+[desktop]
+followUpQueueMode = "steer"
+composerEnterBehavior = "cmdIfMultiline"
+preventSleepWhileRunning = true
+keepRemoteControlAwakeWhilePluggedIn = true
+git-create-pull-request-as-draft = true
+git-show-sidebar-pr-icons = true
+show-context-window-usage = true
+dock-icon-preference = "app-default"
+conversationDetailMode = "STEPS_COMMANDS"
+open-link-in-target-preference = "external-browser"
+
+{{ $context := "Follow the parent's applied global and thread guidance. When relevant context is missing, use permitted read-only checks to consult the first nonempty `AGENTS.override.md` or `AGENTS.md` in `$CODEX_HOME` (default `~/.codex`)." -}}
+{{ dict "auto_review" (dict "extra_policy" $context) | toToml }}

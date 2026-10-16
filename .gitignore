@@ -1,0 +1,24 @@
+.DS_Store
+*~
+*.swp
+__pycache__/
+*.pyc
+.artifacts/
+.env
+.env.*
+*.local
+*.local.*
+local.zsh
+*.pem
+*.key
+backups/
+
+# Generated editor and shell state; never import into chezmoi source.
+.vscode-shared/
+.zcompdump*
+.zsh_history
+.zsh_sessions/
+dot_vscode-shared/
+dot_zcompdump*
+dot_zsh_history
+dot_zsh_sessions/

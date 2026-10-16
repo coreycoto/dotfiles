@@ -1,0 +1,7 @@
+# Copy to ~/.gitconfig.local and fill in your identity before using Git.
+[user]
+  name = Your Name
+  email = you@example.com
+
+# Add your signing settings here, preserving your existing key and key format.
+# Also keep any application-specific difftool/mergetool settings in this file.

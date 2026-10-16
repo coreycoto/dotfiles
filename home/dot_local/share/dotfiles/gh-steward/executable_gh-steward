@@ -1,0 +1,3 @@
+#!/bin/sh
+# GitHub CLI registers this directory as a local extension. Mise owns the binary.
+exec mise exec -- gh-steward "$@"

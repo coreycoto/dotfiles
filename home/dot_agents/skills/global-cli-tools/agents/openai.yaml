@@ -1,0 +1,4 @@
+interface:
+  display_name: "Global CLI Tools"
+  short_description: "Choose curated Mise global tools and scoped workflows"
+  default_prompt: "Use $global-cli-tools to choose a global CLI and inspect its target and installed version."

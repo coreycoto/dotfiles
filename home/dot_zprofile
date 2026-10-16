@@ -1,0 +1,13 @@
+# Homebrew's login environment works on both Apple Silicon and Intel Macs.
+for _dotfiles_brew in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+  if [[ -x "$_dotfiles_brew" ]]; then
+    eval "$("$_dotfiles_brew" shellenv)"
+    break
+  fi
+done
+unset _dotfiles_brew
+
+# Login shells also need user-installed CLIs, including noninteractive shells.
+if [[ -r "$HOME/.config/zsh/environment.zsh" ]]; then
+  source "$HOME/.config/zsh/environment.zsh"
+fi

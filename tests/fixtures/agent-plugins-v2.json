@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "min_codex": "0.160.0",
+  "marketplaces": [
+    {
+      "name": "agent-plugins",
+      "url": "https://github.com/coreycoto/agent-plugins.git",
+      "ref": "87b4ddcb2ea8304680df070eaf57c675795fcf0a",
+      "bundle": "codex-public",
+      "optional": false,
+      "plugins": {
+        "project-management": "0.8.1",
+        "product-development": "0.8.1"
+      }
+    },
+    {
+      "name": "optional-plugins",
+      "url": "https://github.com/example/optional-plugins.git",
+      "ref": "2222222222222222222222222222222222222222",
+      "bundle": "codex-optional",
+      "optional": true,
+      "replaces": "https://github.com/coreycoto/agent-plugins.git",
+      "plugins": {
+        "optional-plugin": "1.0.0"
+      }
+    }
+  ],
+  "retire": [
+    {
+      "plugin_id": "product-development@agent-plugins-pr3-pilot",
+      "version": "0.8.0"
+    },
+    {
+      "plugin_id": "project-management-workflows@optional-plugins",
+      "version": "0.2.2"
+    },
+    {
+      "plugin_id": "engineering-workflows@optional-plugins",
+      "version": "0.1.0"
+    }
+  ]
+}
