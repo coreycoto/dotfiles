@@ -3,18 +3,6 @@
   "purpose": "Standalone installation inventory; unqualified source pins are not install instructions.",
   "groups": [
     {
-      "name": "find-skills",
-      "location": ".agents/skills",
-      "skills": [
-        "find-skills"
-      ],
-      "source_url": "https://github.com/vercel-labs/skills.git",
-      "skill_path": "skills/find-skills/SKILL.md",
-      "observed_folder_hash": "c2f31172b6f256272305a5e6e7228b258446899f",
-      "source_ref": null,
-      "status": "Source identified; commit pin not established"
-    },
-    {
       "name": "ui-sh",
       "location": ".agents/skills",
       "skills": [

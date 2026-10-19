@@ -1,0 +1,217 @@
+{
+  "source_sha256": "ed2689d3b9fe469a4b081ae95120f7b90286ab879256bcedaaa296491b125291",
+  "restrictions": [
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "set",
+        "credentials"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "network",
+        [
+          "route",
+          "unroute"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        [
+          "upload",
+          "install"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "connect"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        [
+          "--cdp",
+          "--headers",
+          "--extension",
+          "--executable-path"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "bun",
+        "run",
+        [
+          "clean",
+          "database:check"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "bun",
+        "run",
+        [
+          "database:migrate",
+          "codex:sync"
+        ]
+      ],
+      "decision": "forbidden"
+    },
+    {
+      "pattern": [
+        "git",
+        "add",
+        [
+          "data/deepmedia/audio/voiceprints",
+          "data/deepmedia/audio/voiceprints/**"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "fzf"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "gh",
+        "auth",
+        "login"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "gh",
+        "pr",
+        [
+          "merge",
+          "close",
+          "reopen",
+          "edit",
+          "ready"
+        ]
+      ],
+      "decision": "forbidden"
+    },
+    {
+      "pattern": [
+        "gh",
+        "issue",
+        [
+          "close",
+          "reopen"
+        ]
+      ],
+      "decision": "forbidden"
+    },
+    {
+      "pattern": [
+        "gh",
+        "repo",
+        "delete"
+      ],
+      "decision": "forbidden"
+    },
+    {
+      "pattern": [
+        "gh",
+        "release",
+        [
+          "delete",
+          "edit"
+        ]
+      ],
+      "decision": "forbidden"
+    },
+    {
+      "pattern": [
+        "gh",
+        "release",
+        "create"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "git",
+        [
+          "reset",
+          "checkout",
+          "clean",
+          "push",
+          "tag",
+          "rebase"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "bunx",
+        "playwright",
+        [
+          "install",
+          "codegen"
+        ]
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "sed",
+        "-i"
+      ],
+      "decision": "prompt"
+    },
+    {
+      "pattern": [
+        "uv",
+        [
+          "add",
+          "remove",
+          "publish",
+          "build",
+          "init"
+        ]
+      ],
+      "decision": "prompt"
+    }
+  ]
+}

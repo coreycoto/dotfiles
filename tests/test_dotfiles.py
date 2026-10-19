@@ -145,6 +145,8 @@ class DotfilesTests(unittest.TestCase):
             ".gitconfig.local", ".config/zsh/local.zsh",
             ".config/zsh/options.local.zsh", ".aws/credentials",
             ".agents/skills/unrelated/SKILL.md",
+            ".codex/rules/default.rules", ".codex/rules/coreycoto.com.rules",
+            ".codex/rules/unrelated.rules", ".codex/config.toml",
             ".config/dotfiles/bun-globals.json", ".local/bin/dotfiles-bun-globals",
             ".config/dotfiles/vscode/settings.local.json",
             "Library/Application Support/Code/User/settings.json",

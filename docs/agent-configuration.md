@@ -104,7 +104,7 @@ model request; they do not verify reviewer prompt delivery or approval behavior.
 ## Purpose-specific agents
 
 Each publisher owns its roles, model choices and native Setup workflow.
-Product Development 0.10.4 supplies six agents and Project Management 0.10.4
+Product Development 0.10.6 supplies six agents and Project Management 0.10.6
 supplies five. Other catalogs and their selections belong in local configuration.
 Luna handles exploration, Sol handles demanding review and Astra is reserved
 for explicitly requested difficult architecture analysis. A parent model
@@ -121,8 +121,8 @@ exact Git commits and plugin versions, installed through native Git catalogs.
 Each catalog uses the declared `.agents/plugins` sparse checkout; source
 verification independently reads the full pinned publisher tree.
 The public selection includes Communication, Product Development, Product
-Management and Project Management 0.10.4 at
-`ffc93e1f06b7181a5ad4e7e41df63a3edc25bfd2`.
+Management and Project Management 0.10.6 at
+`9d45fc8a1aad7e83da0ab96079dff723dda6e1f5`.
 
 ```sh
 dotfiles-plugins
@@ -192,12 +192,21 @@ Every native mutation is attempted once. A failure retains completed and
 failed actions; inspect that partial receipt before retrying. The updater
 never grants hook trust, approves an agent-install form or reloads a chat.
 
-## Third-party skills
+## Personal command rules
 
-`tools/skills.json` records the existing standalone skill groups without copying
-their contents. The global Vercel installer lock identifies the Find Skills
-source and a folder hash, but does not establish its source commit. The UI and
-Cloudflare installations have no reviewed source pins in that lock.
+The [staged rule migration](codex-rules.md) retains the known historical home
+export's prompts and denials without importing its broad allowances. Chezmoi
+only stages files under `.config/dotfiles/codex-rules`; the read-only
+`scripts/codex-rules.py` preflight checks ownership and drift. Active policies,
+`default.rules`, hook trust and removal of the old export require a separate
+reviewed migration after merge.
+
+## Third-party skill selections
+
+`tools/skills.json` records the independently managed UI and Cloudflare skill
+groups without copying their contents. Their source revisions still require
+qualification before restoration. The Find Skills inventory entry is retired;
+this source update does not delete personal installed copies or installer state.
 
 Keep the existing installations. To reproduce them later, qualify an exact
 provider source revision and selected skill paths, then use the provider's

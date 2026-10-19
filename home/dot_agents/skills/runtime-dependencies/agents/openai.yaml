@@ -1,4 +1,0 @@
-interface:
-  display_name: "Runtime and Dependencies"
-  short_description: "Choose mise, uv, and Bun ownership and workflows"
-  default_prompt: "Use $runtime-dependencies to diagnose project runtime selection and choose its locked install workflow."

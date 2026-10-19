@@ -1,0 +1,46 @@
+# Staged policy only: this directory is not an active Codex rules layer.
+# Retain these reviewed historical restrictions without importing allowances.
+# Compatibility restrictions from a former project export; retain until separately reviewed.
+
+prefix_rule(
+    pattern = ["bun", "run", ["clean", "database:check"]],
+    decision = "prompt",
+    justification = "These scripts can be destructive or slow; prompt before running.",
+    match = [
+        "bun run clean",
+        "bun run database:check",
+    ],
+    not_match = [
+        "bun run check",
+    ],
+)
+
+prefix_rule(
+    pattern = ["bun", "run", ["database:migrate", "codex:sync"]],
+    decision = "forbidden",
+    justification = "Do not run migrations or sync scripts without explicit user action.",
+    match = [
+        "bun run database:migrate",
+        "bun run codex:sync",
+    ],
+    not_match = [
+        "bun run database:generate",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        "git",
+        "add",
+        [
+            "data/deepmedia/audio/voiceprints",
+            "data/deepmedia/audio/voiceprints/**",
+        ],
+    ],
+    decision = "prompt",
+    justification = "Deepmedia voiceprint data/embeddings should not be committed.",
+    match = [
+        "git add data/deepmedia/audio/voiceprints",
+        "git add data/deepmedia/audio/voiceprints/**",
+    ],
+)

@@ -19,26 +19,19 @@ dotfiles-tools --apply
 Mise selection. Use `rg --files` or a scoped `find` when it is unavailable. These tools supplement standard
 commands without replacing `grep`, `find`, `cd`, or `cat` with global aliases.
 
-## Agent discovery
+## Agent guidance
 
-The authored [developer-cli-tools skill](../home/dot_agents/skills/developer-cli-tools/SKILL.md)
-and its focused tool references are managed through the explicit manifest.
-Reviewed chezmoi application places the declared skill files under
-`~/.agents/skills/developer-cli-tools`, the user skill location supported by
-Codex. Invoke it as `$developer-cli-tools` or let its description match a tool
-selection task. Start a new Codex session after application and check that the
-skill is listed before relying on discovery. Another agent client must support
-this skill location or receive an explicit path to `SKILL.md`; installing these
-dotfiles locally does not install skills in a cloud environment.
+Portable search and navigation guidance now belongs to Product Development's
+existing `understand-codebase` and `engineering-workflow` procedures in Agent
+Plugins 0.10.5. The contained references cover scoped ripgrep/fd searches,
+unattended fzf selection, bounded previews and explicit checkout identity.
 
-The skill is owned here, rather than copied from an installed third-party skill
-tree. Other skills, tool binaries, navigation history, and generated caches
-remain outside this repo's managed selection. Review the normal chezmoi diff
-and backup procedure before applying; this PR itself does not activate files
-or install software on the current machine.
-
-The [agent tool skill catalog](agent-tool-skills.md) covers runtime ownership,
-dotfiles maintenance, repository checks, and GitHub operations as well.
+Dotfiles continues to declare personal global binary versions and shell
+preferences. It no longer distributes the standalone `developer-cli-tools`
+skill. Existing home copies remain until replacement installation and discovery
+have been verified and a scoped retirement is requested. Other installed skills,
+tool binaries, navigation history and generated caches remain outside the
+managed selection. See [guidance ownership](agent-tool-skills.md).
 
 ## Additional standalone tools
 

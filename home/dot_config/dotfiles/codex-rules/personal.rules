@@ -1,0 +1,206 @@
+# Staged policy only: this directory is not an active Codex rules layer.
+# Retain these reviewed historical restrictions without importing allowances.
+
+prefix_rule(
+    pattern = [
+        [
+            "agent-browser",
+            "~/.bun/bin/agent-browser",
+            "/Users/coreycoto/.bun/bin/agent-browser",
+        ],
+        "set",
+        "credentials",
+    ],
+    decision = "prompt",
+    justification = "Credentials are sensitive; require explicit approval.",
+    match = [
+        "agent-browser set credentials \"user\" \"pass\"",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        [
+            "agent-browser",
+            "~/.bun/bin/agent-browser",
+            "/Users/coreycoto/.bun/bin/agent-browser",
+        ],
+        "network",
+        ["route", "unroute"],
+    ],
+    decision = "prompt",
+    justification = "Network interception can change app behavior; require explicit approval.",
+    match = [
+        "agent-browser network route \"**/api/*\" --abort",
+        "agent-browser network unroute \"**/api/*\"",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        [
+            "agent-browser",
+            "~/.bun/bin/agent-browser",
+            "/Users/coreycoto/.bun/bin/agent-browser",
+        ],
+        ["upload", "install"],
+    ],
+    decision = "prompt",
+    justification = "High-impact commands (uploads/browser install) require explicit approval.",
+    match = [
+        "agent-browser upload \"input[type=file]\" ./tmp/file.png",
+        "agent-browser install",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        [
+            "agent-browser",
+            "~/.bun/bin/agent-browser",
+            "/Users/coreycoto/.bun/bin/agent-browser",
+        ],
+        "connect",
+    ],
+    decision = "prompt",
+    justification = "Connecting to a remote browser via CDP can expose external contexts; require approval.",
+    match = [
+        "agent-browser connect 9222",
+        "agent-browser connect http://localhost:9222",
+    ],
+)
+
+prefix_rule(
+    pattern = [
+        [
+            "agent-browser",
+            "~/.bun/bin/agent-browser",
+            "/Users/coreycoto/.bun/bin/agent-browser",
+        ],
+        ["--cdp", "--headers", "--extension", "--executable-path"],
+    ],
+    decision = "prompt",
+    justification = "Sensitive global options (CDP attach/auth headers/extensions/custom executable) require explicit approval.",
+    match = [
+        "agent-browser --cdp 9222 snapshot",
+        "agent-browser --headers '{\"Authorization\":\"Bearer TOKEN\"}' open https://example.com",
+        "agent-browser --extension ./my-extension open http://localhost:3000",
+        "agent-browser --executable-path /opt/chromium open https://example.com",
+    ],
+)
+
+prefix_rule(
+    pattern = ["fzf"],
+    decision = "prompt",
+    justification = "Interactive tool; prompt before running.",
+    match = [
+        "fzf",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "auth", "login"],
+    decision = "prompt",
+    justification = "Auth changes require explicit approval.",
+    match = [
+        "gh auth login",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["merge", "close", "reopen", "edit", "ready"]],
+    decision = "forbidden",
+    justification = "Do not modify PR state with the local gh CLI. Use the GitHub Codex Connector; if it is unavailable, stop and report the missing capability.",
+    match = [
+        "gh pr merge 75",
+        "gh pr close 75",
+        "gh pr reopen 75",
+        "gh pr edit 75 --title \"New title\"",
+        "gh pr ready 75",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "issue", ["close", "reopen"]],
+    decision = "forbidden",
+    justification = "Do not change issue open/closed state via Codex. Perform manually if needed.",
+    match = [
+        "gh issue close 123",
+        "gh issue reopen 123",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "repo", "delete"],
+    decision = "forbidden",
+    justification = "Never delete repositories via Codex.",
+    match = [
+        "gh repo delete coreycoto/coreycoto.com",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "release", ["delete", "edit"]],
+    decision = "forbidden",
+    justification = "Do not edit or delete releases via Codex. Perform manually if needed.",
+    match = [
+        "gh release delete v1.2.3",
+        "gh release edit v1.2.3",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "release", "create"],
+    decision = "prompt",
+    justification = "Release creation, including drafts, requires explicit approval of the repository, tag and publication stage.",
+    match = [
+        "gh release create v1.2.3",
+        "gh release create v0.7.0 --draft --repo coreycoto/agent-plugins --verify-tag",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["reset", "checkout", "clean", "push", "tag", "rebase"]],
+    decision = "prompt",
+    justification = "Potentially destructive git operations require approval.",
+    match = [
+        "git reset --soft HEAD~1",
+        "git checkout main",
+        "git clean -fd",
+        "git push",
+        "git tag v1.2.3",
+        "git rebase main",
+    ],
+)
+
+prefix_rule(
+    pattern = ["bunx", "playwright", ["install", "codegen"]],
+    decision = "prompt",
+    justification = "Browser install and interactive codegen are high-impact; require approval.",
+    match = [
+        "bunx playwright install",
+        "bunx playwright codegen http://localhost:3001",
+    ],
+)
+
+prefix_rule(
+    pattern = ["sed", "-i"],
+    decision = "prompt",
+    justification = "In-place edits require approval.",
+    match = [
+        "sed -i '' 's/foo/bar/' README.md",
+    ],
+)
+
+prefix_rule(
+    pattern = ["uv", ["add", "remove", "publish", "build", "init"]],
+    decision = "prompt",
+    justification = "Dependency or packaging changes should be explicitly approved.",
+    match = [
+        "uv add --project tools/deepmedia speechbrain",
+        "uv remove --project tools/deepmedia rich",
+        "uv build",
+        "uv publish",
+        "uv init tools/new-tool",
+    ],
+)
