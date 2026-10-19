@@ -11,3 +11,11 @@ unset _dotfiles_brew
 if [[ -r "$HOME/.config/zsh/environment.zsh" ]]; then
   source "$HOME/.config/zsh/environment.zsh"
 fi
+
+# Keep Docker Desktop's per-user CLI path after existing entries.
+if [ -d "$HOME/.docker/bin" ]; then
+  case ":${PATH:-}:" in
+    *":$HOME/.docker/bin:"*) ;;
+    *) export PATH="${PATH:+$PATH:}$HOME/.docker/bin" ;;
+  esac
+fi

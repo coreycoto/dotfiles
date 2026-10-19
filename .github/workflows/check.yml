@@ -2,6 +2,7 @@ name: Dotfiles checks
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -15,6 +16,7 @@ concurrency:
 jobs:
   check:
     runs-on: macos-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:

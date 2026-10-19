@@ -9,6 +9,11 @@
 - Global PATH precedence is Antigravity, `~/.local/bin`, mise shims, Bun global packages,
   Bun itself, Apple Silicon Homebrew, then Intel/local installation paths.
   Only existing directories are added; inherited paths remain after these.
+- Both `.profile` and `.zprofile` retain Docker Desktop's per-user CLI location
+  at `$HOME/.docker/bin` when that directory exists. They append it after
+  existing PATH entries, keep an inherited entry in place, and avoid duplicates
+  when sourced repeatedly. Chezmoi owns this portable setup; Docker settings,
+  credentials, contexts and installed CLI files remain local.
 - Oh My Zsh uses the existing installation when available, with the
   `robbyrussell` theme and `git` and `brew` plugins. Bun completions come from
   the installed `$BUN_INSTALL/_bun` file, avoiding the Bun plugin's background
@@ -63,3 +68,14 @@ run `brew update`. Mise tool versions come from `mise ls --current --json`
 with offline mode enabled. Update metadata comes from `mise outdated --global
 --json`; neither command launches a CLI or installs a version. Other managers
 and self-updating apps are outside this banner's scope. The startup banner remains disabled by default.
+
+## Verification
+
+`./scripts/check` runs the full suite locally and in CI. CI runs for pull
+requests, pushes to `main`, and manual dispatch, with a five-minute job timeout.
+Each of the three real-terminal animation tests runs in a fresh Python worker
+with a 30-second deadline. A timeout requests a signal-based Python stack dump,
+retains captured terminal output and owned-process details, and kills the
+worker and its observed descendant process groups after a short diagnostic
+grace period. Ordinary test failures retain their traceback and terminal output.
+Worker success, failure and timeout cleanup have independent fixture tests.

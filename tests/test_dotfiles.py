@@ -19,6 +19,8 @@ import time
 import tomllib
 import unittest
 
+from terminal_harness import isolated_terminal_test
+
 
 REPO = Path(__file__).resolve().parents[1]
 FILES = json.loads((REPO / "manifest.json").read_text())["files"]
@@ -41,13 +43,18 @@ class TerminalSession:
         if self.pid == 0:
             os.chdir(home)
             os.execve(zsh, [zsh, "-di"], {**env, "TERM": "xterm-256color", "LC_ALL": "en_US.UTF-8"})
+        sys.stderr.write(f"PTY shell pid={self.pid}\n")
+        sys.stderr.flush()
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
 
     def read_for(self, duration):
         deadline = time.monotonic() + duration
         while time.monotonic() < deadline:
             if select.select([self.fd], [], [], max(0, min(0.05, deadline - time.monotonic())))[0]:
-                self.output += os.read(self.fd, 65536)
+                chunk = os.read(self.fd, 65536)
+                self.output += chunk
+                sys.stderr.buffer.write(chunk)
+                sys.stderr.buffer.flush()
 
     def until(self, text, timeout=5):
         deadline = time.monotonic() + timeout
@@ -147,6 +154,8 @@ class DotfilesTests(unittest.TestCase):
             ".agents/skills/unrelated/SKILL.md",
             ".codex/rules/default.rules", ".codex/rules/coreycoto.com.rules",
             ".codex/rules/unrelated.rules", ".codex/config.toml",
+            ".codex/rules/personal.rules", ".codex/rules/legacy-project.rules",
+            ".codex/hooks.json",
             ".config/dotfiles/bun-globals.json", ".local/bin/dotfiles-bun-globals",
             ".config/dotfiles/vscode/settings.local.json",
             "Library/Application Support/Code/User/settings.json",
@@ -531,6 +540,49 @@ esac
         result = self.run_command(["/bin/sh", "-c", '. "$HOME/.profile"; . "$HOME/.profile"; printf "%s\\n" "$PATH"'])
         self.assertEqual(result.stdout.strip().split(":").count(str(self.test_home / ".local/bin")), 1)
 
+    def test_login_profiles_keep_docker_cli_available_without_duplicates(self):
+        old_home = self.test_home
+        self.test_home = self.root / "home with spaces"
+        old_home.rename(self.test_home)
+        for key in ["HOME", "ZDOTDIR"]:
+            self.env[key] = str(self.test_home)
+        self.env["XDG_CONFIG_HOME"] = str(self.test_home / ".config")
+        self.chezmoi[self.chezmoi.index("--destination") + 1] = str(self.test_home)
+        docker_bin = self.test_home / ".docker/bin"
+        cli = self.write(docker_bin / "dotfiles-docker-fixture", "#!/bin/sh\nprintf 'docker-cli-available\\n'\n", executable=True)
+        self.install()
+        self.install()
+        self.assertEqual(cli.read_text(), "#!/bin/sh\nprintf 'docker-cli-available\\n'\n")
+        self.assertEqual(self.run_command(self.chezmoi + ["status"]).stdout, "")
+        inherited = [str(self.test_home / "other bin"), "/usr/bin", "/bin"]
+        for shell, profile, flags in [("/bin/sh", ".profile", []), (shutil.which("zsh"), ".zprofile", ["-df"])]:
+            for already_present in [False, True]:
+                with self.subTest(profile=profile, already_present=already_present):
+                    entries = inherited.copy()
+                    if already_present:
+                        entries.insert(2, str(docker_bin))
+                    self.env["PATH"] = ":".join(entries)
+                    source = f'. "$HOME/{profile}"; '
+                    result = self.run_command([shell, *flags, "-c", source * 2 + 'printf "%s\\n" "$PATH"; dotfiles-docker-fixture'])
+                    path, output = result.stdout.splitlines()
+                    paths = path.split(":")
+                    self.assertEqual(output, "docker-cli-available")
+                    self.assertEqual(result.stderr, "")
+                    self.assertEqual(paths.count(str(docker_bin)), 1)
+                    self.assertEqual([p for p in paths if p in entries], entries)
+                    if not already_present:
+                        self.assertEqual(paths[-1], str(docker_bin))
+
+    def test_login_profiles_do_not_add_a_missing_docker_directory(self):
+        self.install()
+        self.env["PATH"] = "/usr/bin:/bin"
+        for shell, profile, flags in [("/bin/sh", ".profile", []), (shutil.which("zsh"), ".zprofile", ["-df"])]:
+            with self.subTest(profile=profile):
+                source = f'. "$HOME/{profile}"; '
+                result = self.run_command([shell, *flags, "-c", source * 2 + 'printf "%s\\n" "$PATH"'])
+                self.assertNotIn(str(self.test_home / ".docker/bin"), result.stdout.strip().split(":"))
+                self.assertEqual(result.stderr, "")
+
     def test_git_identity_is_local_and_shared_preferences_are_portable(self):
         self.install()
         self.write(self.test_home / ".gitconfig.local", "[user]\n name = Example User\n email = example@example.invalid\n")
@@ -868,6 +920,7 @@ tool-status --updates
                 time.sleep(0.02)
         self.assertIn("v50.11.0", cache.read_text())
 
+    @isolated_terminal_test
     def test_refresh_animation_preserves_typed_input_and_prompt_then_cleans_up(self):
         self.install()
         cache = self.status_spies()
@@ -898,6 +951,7 @@ tool-status --updates
             gate.touch()
             self.wait_for(lambda: cache.stat().st_mtime > 0)
 
+    @isolated_terminal_test
     def test_refresh_animation_stays_silent_during_commands_and_discards_old_ticks(self):
         self.install()
         cache = self.status_spies()
@@ -928,6 +982,7 @@ tool-status --updates
             command_gate.touch()
             self.wait_for(cache.exists)
 
+    @isolated_terminal_test
     def test_failed_refresh_shows_failure_and_closes_animation_descriptor(self):
         self.install()
         cache = self.status_spies()
