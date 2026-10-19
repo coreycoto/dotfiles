@@ -1,4 +1,0 @@
-interface:
-  display_name: "Developer CLI Tools"
-  short_description: "Choose tools for repository search and navigation"
-  default_prompt: "Use $developer-cli-tools to choose an efficient repository search and file preview workflow."

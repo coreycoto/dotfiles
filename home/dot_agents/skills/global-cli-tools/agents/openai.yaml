@@ -1,4 +1,4 @@
 interface:
-  display_name: "Global CLI Tools"
-  short_description: "Choose curated Mise global tools and scoped workflows"
-  default_prompt: "Use $global-cli-tools to choose a global CLI and inspect its target and installed version."
+  display_name: "Personal Global CLI Preferences"
+  short_description: "Maintain dotfiles-owned Mise global tools and update preferences"
+  default_prompt: "Use $global-cli-tools to inspect this dotfiles setup's global tool declarations and preview an authorized change."

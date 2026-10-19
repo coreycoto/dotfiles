@@ -1,47 +1,44 @@
-# Agent tool skills
+# Agent tool guidance ownership
 
-The dotfiles own six small skills, grouped by the decision an agent needs to
-make. They cover runtime and CLI ownership and focused workflows for selected tools. Each
-entry point loads only the references relevant to the current task.
+Agent Plugins owns portable development tool guidance as conditional references
+inside existing workflows. Dotfiles owns personal machine setup and activation.
 
-| Skill | Tool references | Decision it supports |
-|---|---|---|
-| [developer-cli-tools](../home/dot_agents/skills/developer-cli-tools/SKILL.md) | ripgrep, fd, fzf, zoxide, bat | Contents versus filenames, interactive versus unattended selection, stable previews |
-| [runtime-dependencies](../home/dot_agents/skills/runtime-dependencies/SKILL.md) | mise, uv, Bun | Runtime ownership, project selectors, interpreter resolution, locked installs |
-| [dotfiles-maintenance](../home/dot_agents/skills/dotfiles-maintenance/SKILL.md) | chezmoi | Source versus target state, explicit manifests, preview and activation |
-| [repository-checks](../home/dot_agents/skills/repository-checks/SKILL.md) | Gitleaks, ShellCheck, Git LFS | Scan boundaries, shell dialects, pointers versus available object content |
-| [github-workflow](../home/dot_agents/skills/github-workflow/SKILL.md) | gh and connector selection | Exact PR/check evidence and CLI fallback alongside the installed publishing workflow |
+| Guidance | Owner and entry point |
+| --- | --- |
+| Search, filenames, selection and previews | Product Development: `understand-codebase` or `engineering-workflow` |
+| Runtime ownership and locked dependencies | Product Development: `implement-change` or `diagnose-problem` |
+| Secret scanning, shell dialects and Git LFS | Product Development: `maintain-verification` or `implement-change` |
+| Browser tools, Turbo, Vercel and Neon | Product Development: `verify-product` or the relevant engineering workflow |
+| GitHub connector/CLI selection and exact-candidate CI evidence | Project Management: `delivery-lifecycle` or `publish-change` |
+| Personal Mise global versions, wrappers and update preferences | Dotfiles: [global-cli-tools](../home/dot_agents/skills/global-cli-tools/SKILL.md) |
+| Chezmoi manifests, source/target state and activation | Dotfiles: [dotfiles-maintenance](../home/dot_agents/skills/dotfiles-maintenance/SKILL.md) |
 
-| [global-cli-tools](../home/dot_agents/skills/global-cli-tools/SKILL.md) | agent-browser, Turbo, Vercel CLI, Neon | Global fallback selection, browser and remote operation scope |
+The first five rows ship in Agent Plugins 0.10.5. Use the reviewed publisher pin
+in the public plugin declaration and verify installed files and fresh-task
+discovery. A marketplace declaration alone does not prove a cloud environment
+loaded the plugins. Runtime and host capabilities need their own qualification.
+Personal setup paths and automatic update schedules are not portable policy.
 
-## Distribution and discovery
+## Migration and preservation
 
-All authored entry points, references, and UI metadata are declared individually
-in `manifest.json`. Reviewed chezmoi application installs them under
-`~/.agents/skills/<name>`; no third-party skill tree or plugin implementation is
-copied into this repository. Existing unrelated skills stay unmanaged.
+Only the two personal skills above remain in the explicit chezmoi manifest.
+The previous `developer-cli-tools`, `runtime-dependencies`, `repository-checks`
+and `github-workflow` source trees are retired in favor of their plugin-owned
+guidance. This source change does not delete already installed home copies.
+Keep those copies until replacement installation and discovery are verified,
+then review exact content and ownership before a separate, scoped retirement.
+Do not activate this migration by applying all unrelated home-directory drift.
 
-Use the normal private backup, preview, apply, and verify process described in
-the README. After application, start a new Codex session and verify the six
-names appear in the skill list. They allow automatic selection and can also be
-invoked explicitly, for example `$runtime-dependencies`. Another client needs
-to support the user skill location or receive the entry-point path explicitly.
-Local installation does not establish discovery in a cloud environment.
+The third-party Find Skills inventory entry has been removed. That metadata
+removal does not uninstall a personal skill or change its installer lock.
+Vendor ui.sh and Cloudflare installations remain independently managed and are
+not copied into these dotfiles or the public Agent Plugins packages.
 
-The GitHub skill is a reference layer, not a second publication engine. It
-routes lifecycle operations to available connectors and the existing installed
-publishing workflow; it uses gh for Actions evidence and concrete connector
-gaps. Publisher-owned workflow skills and caches remain in their own packages.
+The two personal entry points and their supporting files are declared individually
+in `manifest.json` and installed under `~/.agents/skills/<name>`. Preserve other
+skills and generated state. New sessions must independently verify discovery;
+local installation does not establish a cloud runtime's capabilities.
 
-## Maintenance
-
-Add detail when a recurring decision or failure demonstrates its value. Keep
-installation ownership and project policy distinct from generic tool commands;
-use the project manifest, lockfile, and CI as the authority for that project.
-References link to upstream documentation rather than copying command manuals.
-
-Run `./scripts/check` before publication. Its disposable-home checks compare
-actual chezmoi targets with the manifest, exercise repeated application, and
-preserve an unrelated installed skill. Separately validate skill frontmatter,
-UI prompts, and relative reference links in both source and a disposable install.
-Software installation and real-home activation remain explicit operations.
+Run `./scripts/check` before publication. The disposable-home gate compares actual
+managed files with the manifest, exercises repeated application and preserves
+an unrelated installed skill. Real-home application remains a separate action.

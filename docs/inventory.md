@@ -26,7 +26,7 @@ machine state during repeated application.
 | Rustup and Cargo | Mise owns isolated homes; [toolchain and local configuration guidance](rust.md) preserves other installations and authored settings |
 | SSH | Manage only a private `config` with a [local overlay and provisioning guide](ssh.md); retain all identities, keys, agents, and known hosts outside Git |
 | VS Code | Manage two authored selection files; [explicitly merge portable preferences and install eight pinned extensions](vscode.md); retain unrelated preferences, keybindings, launch state, authentication, downloaded extensions, and databases locally |
-| Authored `.agents/skills` | Manage only the six selected skills and their explicitly declared references/UI metadata; preserve other installed skills and generated tool state |
+| Authored `.agents/skills` | Manage only dotfiles-maintenance and personal global-cli-tools with their declared supporting files; portable tool guidance belongs to Agent Plugins; preserve other installed skills and generated state |
 | `.codex` personal instructions and defaults | Render the canonical autonomy policy into global instructions; explicitly merge allowlisted model, built-in workspace access, feature, memory and desktop preferences plus a short reviewer hint through native Codex; keep concrete permission grants and host state local; purpose-specific routing belongs to publisher-owned agents |
 | Personal `.agents/plugins/marketplace.json` | Manage the catalog template; preserve host-local entries in a private overlay |
 | Private plugin sources | Keep catalog URLs, pins and selected versions in unmanaged `~/.config/dotfiles/agent-plugin-sources.local.json`; append validated optional entries without replacing public catalog selections |

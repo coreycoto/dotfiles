@@ -1,27 +1,26 @@
 ---
 name: global-cli-tools
-description: Select and use the curated Mise global tools agent-browser, Turbo, Vercel CLI, and Neon. Use for browser automation, monorepo task selection, deployment inspection, database branch inspection, global CLI ownership, or update notices.
+description: Inspect or maintain this dotfiles setup's personal Mise global CLI declarations, update preferences and wrappers while preserving project pins.
 ---
 
-# Curated global CLI tools
+# Personal global CLI preferences
 
-Inspect the project scripts, local dependencies, installed version, and available
-connectors before choosing a global fallback. Project-local binaries and their
-lockfiles govern project execution. A global version is not a project upgrade.
+Use this for the personal tool declarations and wrappers owned by these
+dotfiles. Read the reviewed checkout's `docs/tool-ownership.md` and
+`docs/mise.md`; executable versions and supported host selections live in the
+consumer configuration. Do not impose the Mac setup on a cloud development VM.
 
-- [agent-browser](references/agent-browser.md): browser inspection and interaction.
-- [Turbo](references/turbo.md): task graph, filters, and cache evidence.
-- [Vercel](references/vercel.md): deployment identity and environment selection.
-- [Neon](references/neon.md): CLI migration and explicit database branch scope.
+The dotfiles own global requests in `~/.config/mise/config.toml`.
+`dotfiles-tools` previews installation, and `dotfiles-tools --update` previews
+upgrades. Add `--apply` only for an authorized install or upgrade. Selected
+global CLIs opt into command-triggered update checks every six hours; project
+pins still win. Inspect current configuration before relying on that schedule.
+Keep status checks offline with automatic installation disabled, and preserve
+existing recovery installations unless their removal is separately requested.
 
-The dotfiles own the global version requests in
-`~/.config/mise/config.toml`; `dotfiles-tools` previews installation and
-`dotfiles-tools --update` previews global upgrades. Add `--apply` only for an
-authorized installation or upgrade. Selected global CLIs check for updates every
-6 hours when invoked through shims; project pins still win. Status commands read
-metadata with automatic installation disabled and never launch the opted-in CLIs.
-
-Prefer installed specialized workflow skills and available connectors when they
-cover the task. These references complement them rather than replacing their
-execution instructions. Commands in current upstream docs may exceed an older
-pinned global version: inspect `--help` before using additional flags.
+For portable browser, Turbo, Vercel or Neon task guidance, use the installed
+Product Development workflow and its conditional tool references. Those
+references also cover search, runtime/dependency selection and repository checks
+in local or cloud environments. This personal skill owns neither provider
+authorization nor generic execution procedures. A compatible global binary can
+be a fallback; a global update is not a project dependency upgrade.
