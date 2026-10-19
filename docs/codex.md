@@ -32,7 +32,7 @@ precedes configuration or installation changes. Unrelated settings are preserved
 Nothing installs at shell startup or during `chezmoi apply`.
 
 The public selection includes Communication, Product Development, Product
-Management and Project Management 0.10.3. Product Development supplies six
+Management and Project Management 0.10.4. Product Development supplies six
 agents; Project Management supplies five. Additional catalogs belong in the
 unmanaged local source declaration described in
 [local plugin sources](agent-configuration.md#local-plugin-sources).

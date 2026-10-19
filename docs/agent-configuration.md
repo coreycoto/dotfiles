@@ -104,7 +104,7 @@ model request; they do not verify reviewer prompt delivery or approval behavior.
 ## Purpose-specific agents
 
 Each publisher owns its roles, model choices and native Setup workflow.
-Product Development 0.10.3 supplies six agents and Project Management 0.10.3
+Product Development 0.10.4 supplies six agents and Project Management 0.10.4
 supplies five. Other catalogs and their selections belong in local configuration.
 Luna handles exploration, Sol handles demanding review and Astra is reserved
 for explicitly requested difficult architecture analysis. A parent model
@@ -121,8 +121,8 @@ exact Git commits and plugin versions, installed through native Git catalogs.
 Each catalog uses the declared `.agents/plugins` sparse checkout; source
 verification independently reads the full pinned publisher tree.
 The public selection includes Communication, Product Development, Product
-Management and Project Management 0.10.3 at
-`0912171382bea1c7fe23777861e2b011a47ce45c`.
+Management and Project Management 0.10.4 at
+`ffc93e1f06b7181a5ad4e7e41df63a3edc25bfd2`.
 
 ```sh
 dotfiles-plugins
