@@ -32,6 +32,7 @@ machine state during repeated application.
 | Private plugin sources | Keep catalog URLs, pins and selected versions in unmanaged `~/.config/dotfiles/agent-plugin-sources.local.json`; append validated optional entries without replacing public catalog selections |
 | Shared agent plugins | Declare exact publisher revisions and selected versions; `dotfiles-plugins` pins native Git catalogs, verifies package bytes against publisher projections and installs only missing or changed versions; generated assets stay outside Git |
 | Installed third-party skills | Record their provenance limits and qualification procedure; retain installed trees outside Git |
+| Personal command-rule migration | Stage reviewed restrictions under `.config/dotfiles/codex-rules`; preview ownership and drift without changing active `.codex/rules`, remembered approvals or hook trust |
 | Agent authentication, main config state, caches, sessions and databases | Keep local and preserve during repeated application |
 | `.claude`, other agent directories | Unmanaged; any portable preferences or authored instructions require individual review |
 | Other editors and `.config` applications | Unmanaged; add reviewed authored files individually |

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "legacy_file": "coreycoto.com.rules",
+  "legacy_sha256": "ed2689d3b9fe469a4b081ae95120f7b90286ab879256bcedaaa296491b125291",
+  "legacy_counts": {
+    "allow": 73,
+    "prompt": 14,
+    "forbidden": 5
+  },
+  "files": {
+    "personal.rules": "d21c1f1067f3467c3e5b0c7693e0962ceeb91e2b983efd18588e042c46124557",
+    "legacy-project.rules": "26e76cf821dfcda01f231b0c695c1c8b3f6cea34dc698da85e951328f3dc7c28"
+  }
+}

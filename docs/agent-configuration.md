@@ -192,7 +192,16 @@ Every native mutation is attempted once. A failure retains completed and
 failed actions; inspect that partial receipt before retrying. The updater
 never grants hook trust, approves an agent-install form or reloads a chat.
 
-## Third-party skills
+## Personal command rules
+
+The [staged rule migration](codex-rules.md) retains the known historical home
+export's prompts and denials without importing its broad allowances. Chezmoi
+only stages files under `.config/dotfiles/codex-rules`; the read-only
+`scripts/codex-rules.py` preflight checks ownership and drift. Active policies,
+`default.rules`, hook trust and removal of the old export require a separate
+reviewed migration after merge.
+
+## Third-party skill selections
 
 `tools/skills.json` records the independently managed UI and Cloudflare skill
 groups without copying their contents. Their source revisions still require

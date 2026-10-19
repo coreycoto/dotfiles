@@ -31,6 +31,9 @@
     {"source": "home/dot_local/bin/executable_dotfiles-plugins", "target": ".local/bin/dotfiles-plugins"},
     {"source": "home/dot_local/bin/executable_dotfiles-tools.tmpl", "target": ".local/bin/dotfiles-tools"},
     {"source": "home/dot_local/bin/executable_dotfiles-mise-status", "target": ".local/bin/dotfiles-mise-status"},
-    {"source": "home/dot_local/share/dotfiles/gh-steward/executable_gh-steward", "target": ".local/share/dotfiles/gh-steward/gh-steward"}
+    {"source": "home/dot_local/share/dotfiles/gh-steward/executable_gh-steward", "target": ".local/share/dotfiles/gh-steward/gh-steward"},
+    {"source": "home/dot_config/dotfiles/codex-rules/personal.rules", "target": ".config/dotfiles/codex-rules/personal.rules"},
+    {"source": "home/dot_config/dotfiles/codex-rules/legacy-project.rules", "target": ".config/dotfiles/codex-rules/legacy-project.rules"},
+    {"source": "home/dot_config/dotfiles/codex-rules/migration.json", "target": ".config/dotfiles/codex-rules/migration.json"}
   ]
 }
