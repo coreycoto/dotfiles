@@ -10,14 +10,49 @@ the main Codex configuration remain unmanaged.
 
 The historical home `coreycoto.com.rules` has 92 prefix rules: 73 allowances,
 14 prompts and 5 denials. Its reviewed SHA-256 is recorded in `migration.json`.
-The prepared files retain all 19 restrictions, including their exact patterns,
-aliases, decisions and justifications. The 73 allowances are not imported.
-The old file remains effective until a separately authorized migration.
+Those counts describe the historical ownership baseline, not a requirement to
+keep every prompt global. Policy revision 2 retains all five denials with their
+exact patterns, aliases, decisions and justifications, and narrows the global
+proposal to eight prompts. The 73 allowances are not imported. The old file
+remains effective until a separately authorized migration and retirement.
 
 | Prepared file | Rules | Ownership |
 | --- | --- | --- |
-| `personal.rules` | 12 prompts, 4 denials | Browser capabilities, Git/GitHub, interactive selection, Playwright, in-place editing and uv requests |
-| `legacy-project.rules` | 2 prompts, 1 denial | Historical Bun script restrictions and voiceprint staging path; compatibility only, pending separate scope review |
+| `personal.rules` | 8 prompts, 4 denials | Browser credentials/uploads/attachment/sensitive options, GitHub authentication and release creation, Git reset/clean/push/tag and uv publication |
+| `legacy-project.rules` | 1 denial | Historical Bun migration/sync restriction; preserve pending separate denial review |
+
+## Reviewed prompt scope
+
+These are escalation rules: a matching `prompt` requests approval before an
+invocation outside the sandbox. They are not extra conversational confirmations
+for every authorized edit. The strictest matching decision wins; a remembered
+allowance cannot override a matching prompt or denial. User rules apply across
+repositories on that host. Project rules load only through a trusted project
+configuration layer; neither location establishes Cloud discovery.
+
+| Historical prompt | Revision 2 treatment |
+| --- | --- |
+| Browser credentials | Keep global |
+| Browser request route/unroute | Keep in the owning project's browser-testing policy |
+| Browser upload/install | Keep uploads global; remove the global browser-install prompt |
+| Browser connect | Keep global |
+| Browser `--cdp`, `--headers`, `--extension`, `--executable-path` | Keep global as a compatibility group pending individual review |
+| `fzf` | Remove global prompt; interactive selection belongs to the task workflow |
+| `gh auth login` | Keep global |
+| `gh release create` | Keep global, including draft creation |
+| Git reset/checkout/clean/push/tag/rebase | Keep reset/clean/push/tag global; ordinary checkout/rebase follow the project workflow |
+| Playwright install/codegen | Remove global prompt; handle in the authorized development task |
+| `sed -i` | Remove global prompt; ordinary edits follow task authorization |
+| uv add/remove/publish/build/init | Keep publication global; ordinary dependency and packaging work follows the project workflow |
+| Bun clean/database:check | Keep project-specific; script names have repository-defined meaning |
+| Voiceprint staging path | Keep in the repository that owns the sensitive data |
+
+Removing a prompt does not add an allow rule. With no matching rule, the host's
+remaining sandbox and approval policy determine handling. Unchanged
+`default.rules` or project rules may still allow or restrict the command.
+Initially adding the replacements alongside the historical file keeps all old
+prompts effective. Their removal takes effect only after verified retirement
+of that old file and a separate client reload.
 
 The four GitHub denials cover local CLI PR lifecycle changes, issue closure or
 reopening, repository deletion, and release editing/deletion. They are reasonable
@@ -37,9 +72,10 @@ The old home `bun run codex:sync` denial is retained even though that command
 was made read-only in project commit `ee2f75a888360cf23d445d850886d1948b34d23b`.
 Removing obsolete restrictions is a separate policy decision.
 
-Browser, Git, Playwright, sed and uv prompts are also portable policy candidates.
-Their inclusion here preserves existing home behavior; it does not remove or
-rewrite the project's rules. Prefixes do not constrain accounts, URLs, current
+The project already retains request interception, Bun clean/database checks and
+voiceprint staging prompts. Those three prompts are deliberately absent from
+the revised global proposal. This source does not remove or rewrite the
+project's existing prompts or denials. Prefixes do not constrain accounts, URLs, current
 directories or connector resources. Existing patterns with machine-specific
 browser aliases are retained for compatibility, not advertised as universal
 protection against every executable spelling or shell wrapper.
@@ -92,13 +128,21 @@ additions, does not need to be applied. Before changing active rules:
    ownership/digests and replacement qualification, remove the exact old export.
    Test the resulting complete combination and reload again. This removes its
    73 allowances, so some formerly allowed commands may require host review.
-   All 19 historical restrictions must remain represented. Preserve the backup
+   All five historical denials and eight reviewed global prompts must remain
+   represented. Keep project-specific prompts in the owning repository. Preserve the backup
    and report source, staging, active installation, reload and runtime evidence
    separately. On failure, retain the old file and evidence; do not retry blindly.
 
 A preflight read cannot make later writes race-free. If exclusive access cannot
 be established, leave retirement pending. A policy check is neither connector
 enforcement nor hook trust, and does not make release draft-state checks atomic.
+
+The native checker suite uses offline synthetic defaults, project prompts and
+legacy-overlap fixtures. It checks every denied prefix and reviewed global
+prompt in both file orders, verifies routine commands fall back without adding
+allowances, preserves remembered allowances, and keeps draft release edits
+forbidden. CI installs the pinned Codex 0.162.1 checker so these tests run there
+as well as locally. No test executes a release or provider command.
 
 Sources: [Codex rules](https://learn.chatgpt.com/docs/agent-configuration/rules),
 [coreycoto.com sync retirement](https://github.com/coreycoto/coreycoto.com/commit/ee2f75a888360cf23d445d850886d1948b34d23b).

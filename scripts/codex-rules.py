@@ -69,6 +69,8 @@ def preview(home, bundle=BUNDLE):
     return {
         "status": status,
         "applied": False,
+        "policy_revision": metadata.get("policy_revision", 1),
+        "staged_counts": metadata.get("staged_counts"),
         "legacy": legacy,
         "targets": targets,
         "default_rules": default,

@@ -8,7 +8,12 @@
     "forbidden": 5
   },
   "files": {
-    "personal.rules": "d21c1f1067f3467c3e5b0c7693e0962ceeb91e2b983efd18588e042c46124557",
-    "legacy-project.rules": "26e76cf821dfcda01f231b0c695c1c8b3f6cea34dc698da85e951328f3dc7c28"
+    "personal.rules": "ad385e9e259b74c730cc85fcc9a637e7210f20af3d7ee1703a1d2c203667250d",
+    "legacy-project.rules": "283facf5dd739ce401d04e3660baeb9be188715532355d10de07383146f37bc4"
+  },
+  "policy_revision": 2,
+  "staged_counts": {
+    "prompt": 8,
+    "forbidden": 5
   }
 }

@@ -21,7 +21,11 @@ jobs:
           fetch-depth: 0
       - name: Install validation tools
         run: brew install chezmoi gitleaks shellcheck python@3.13 mise uv
+      - name: Install pinned offline policy checker
+        run: npm install --global @openai/codex@0.162.1
       - name: Check installation and shell behavior
+        env:
+          CODEX_TEST_BINARY: codex
         run: ./scripts/check
       - name: Scan Git history
         run: gitleaks git --log-opts=--all --redact --no-banner --config .gitleaks.toml .

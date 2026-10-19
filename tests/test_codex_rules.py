@@ -16,6 +16,7 @@ import unittest
 REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "home/dot_config/dotfiles/codex-rules"
 FIXTURE = json.loads((REPO / "tests/fixtures/legacy-codex-boundaries.json").read_text())
+REVIEW = json.loads((REPO / "tests/fixtures/codex-policy-review.json").read_text())
 spec = importlib.util.spec_from_file_location("codex_rules", REPO / "scripts/codex-rules.py")
 rules = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rules)
@@ -24,6 +25,20 @@ CODEX = os.environ.get("CODEX_TEST_BINARY") or shutil.which("codex")
 
 def signature(rule):
     return json.dumps({"pattern": rule["pattern"], "decision": rule["decision"]}, sort_keys=True)
+
+
+def staged_rules():
+    actual = []
+    for path in BUNDLE.glob("*.rules"):
+        for node in ast.parse(path.read_text()).body:
+            call = node.value
+            assert call.func.id == "prefix_rule"
+            actual.append({item.arg: ast.literal_eval(item.value) for item in call.keywords})
+    return actual
+
+
+def expanded(pattern):
+    return itertools.product(*[part if isinstance(part, list) else [part] for part in pattern])
 
 
 class CodexRuleTests(unittest.TestCase):
@@ -110,22 +125,26 @@ class CodexRuleTests(unittest.TestCase):
         self.assertIn("unrecognized arguments", result.stderr)
         self.assertFalse((self.active / "personal.rules").exists())
 
-    def test_all_historical_restrictions_survive_without_importing_allowances(self):
-        actual = []
-        for path in BUNDLE.glob("*.rules"):
-            for node in ast.parse(path.read_text()).body:
-                call = node.value
-                self.assertEqual(call.func.id, "prefix_rule")
-                data = {item.arg: ast.literal_eval(item.value) for item in call.keywords}
-                self.assertIn(data["decision"], {"prompt", "forbidden"})
-                actual.append(signature(data))
-        self.assertCountEqual(actual, [signature(rule) for rule in FIXTURE["restrictions"]])
+    def test_all_five_denials_survive_and_only_reviewed_global_prompts_remain(self):
+        actual = staged_rules()
+        self.assertTrue(all(rule["decision"] in {"prompt", "forbidden"} for rule in actual))
+        self.assertCountEqual(
+            [signature(rule) for rule in actual if rule["decision"] == "forbidden"],
+            [signature(rule) for rule in FIXTURE["restrictions"] if rule["decision"] == "forbidden"],
+        )
+        self.assertCountEqual(
+            [rule["pattern"] for rule in actual if rule["decision"] == "prompt"],
+            REVIEW["global_prompts"],
+        )
         metadata = json.loads((BUNDLE / "migration.json").read_text())
         self.assertEqual(metadata["legacy_sha256"], FIXTURE["source_sha256"])
-        self.assertEqual(len(actual), 19)
+        self.assertEqual(metadata["legacy_counts"], {"allow": 73, "prompt": 14, "forbidden": 5})
+        self.assertEqual(metadata["staged_counts"], {"prompt": 8, "forbidden": 5})
+        self.assertEqual(len(actual), 13)
+        self.assertEqual(rules.preview(self.home, self.bundle)["policy_revision"], 2)
 
     @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
-    def test_native_combinations_preserve_every_boundary_despite_broad_local_allowances(self):
+    def test_native_combinations_preserve_reviewed_boundaries_in_both_file_orders(self):
         # This synthetic default.rules is only an offline fixture, never the real home file.
         allowance = self.home / "fixture-default.rules"
         roots = {str(rule["pattern"][0]) for rule in FIXTURE["restrictions"]
@@ -136,16 +155,15 @@ class CodexRuleTests(unittest.TestCase):
         prefix = [CODEX, "execpolicy", "check", "--rules", str(allowance)]
         for name in sorted(rules.NAMES):
             prefix += ["--rules", str(BUNDLE / name)]
-        count = 0
-        for rule in FIXTURE["restrictions"]:
-            choices = [part if isinstance(part, list) else [part] for part in rule["pattern"]]
-            for command in itertools.product(*choices):
-                with self.subTest(command=command):
-                    result = subprocess.run(prefix + ["--", *command], text=True, capture_output=True, timeout=15)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(json.loads(result.stdout)["decision"], rule["decision"])
-                    count += 1
-        self.assertGreater(count, 40)
+        reverse = [CODEX, "execpolicy", "check"]
+        for name in reversed(sorted(rules.NAMES)):
+            reverse += ["--rules", str(BUNDLE / name)]
+        reverse += ["--rules", str(allowance)]
+        for rule in staged_rules():
+            for command in expanded(rule["pattern"]):
+                for ordering in (prefix, reverse):
+                    with self.subTest(command=command, ordering=ordering):
+                        self.assertEqual(self.check(ordering, command), rule["decision"])
         # The remaining project's stricter release-create denial must still win.
         project = self.home / "fixture-project.rules"
         project.write_text('prefix_rule(pattern = ["gh", "release", ["create", "edit", "delete"]], decision = "forbidden")\n')
@@ -153,3 +171,54 @@ class CodexRuleTests(unittest.TestCase):
                                 text=True, capture_output=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout)["decision"], "forbidden")
+
+    def check(self, prefix, command):
+        result = subprocess.run(prefix + ["--", *command], text=True, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout).get("decision")
+
+    @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
+    def test_routine_and_project_prompts_fall_back_until_their_project_layer_is_loaded(self):
+        prefix = [CODEX, "execpolicy", "check"]
+        for name in sorted(rules.NAMES):
+            prefix += ["--rules", str(BUNDLE / name)]
+        commands = REVIEW["routine_commands"] + [list(c) for p in REVIEW["project_prompts"] for c in expanded(p)]
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertIsNone(self.check(prefix, command))
+        project = self.home / "fixture-project-prompts.rules"
+        project.write_text("\n".join(
+            f"prefix_rule(pattern = {json.dumps(pattern)}, decision = 'prompt')"
+            for pattern in REVIEW["project_prompts"]
+        ))
+        for pattern in REVIEW["project_prompts"]:
+            for command in expanded(pattern):
+                with self.subTest(project_command=command):
+                    self.assertEqual(self.check(prefix + ["--rules", str(project)], command), "prompt")
+
+    @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
+    def test_unchanged_remembered_allowance_survives_prompt_removal(self):
+        default = self.home / "fixture-remembered.rules"
+        default.write_text('prefix_rule(pattern = ["uv"], decision = "allow")\n')
+        prefix = [CODEX, "execpolicy", "check", "--rules", str(default)]
+        for name in sorted(rules.NAMES):
+            prefix += ["--rules", str(BUNDLE / name)]
+        self.assertEqual(self.check(prefix, ["uv", "build"]), "allow")
+        self.assertEqual(self.check(prefix, ["uv", "publish"]), "prompt")
+
+    @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
+    def test_old_restrictions_remain_effective_during_overlap_and_draft_edits_stay_denied(self):
+        legacy = self.home / "fixture-legacy.rules"
+        legacy.write_text("\n".join(
+            f"prefix_rule(pattern = {json.dumps(rule['pattern'])}, decision = {json.dumps(rule['decision'])})"
+            for rule in FIXTURE["restrictions"]
+        ))
+        prefix = [CODEX, "execpolicy", "check", "--rules", str(legacy)]
+        for name in sorted(rules.NAMES):
+            prefix += ["--rules", str(BUNDLE / name)]
+        for rule in FIXTURE["restrictions"]:
+            for command in expanded(rule["pattern"]):
+                with self.subTest(command=command):
+                    self.assertEqual(self.check(prefix, command), rule["decision"])
+        for suffix in (["--draft"], ["--draft=false"], ["--prerelease"]):
+            self.assertEqual(self.check(prefix, ["gh", "release", "edit", "v0.0.0", *suffix]), "forbidden")
