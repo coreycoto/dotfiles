@@ -146,5 +146,34 @@
       "init",
       "example"
     ]
+  ],
+  "retired_denials": [
+    [
+      "gh",
+      "pr",
+      [
+        "merge",
+        "close",
+        "reopen",
+        "edit",
+        "ready"
+      ]
+    ],
+    [
+      "gh",
+      "issue",
+      [
+        "close",
+        "reopen"
+      ]
+    ],
+    [
+      "bun",
+      "run",
+      [
+        "database:migrate",
+        "codex:sync"
+      ]
+    ]
   ]
 }

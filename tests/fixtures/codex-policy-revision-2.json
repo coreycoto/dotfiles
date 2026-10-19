@@ -1,0 +1,219 @@
+{
+  "policy_revision": 2,
+  "files": {
+    "personal.rules": "ad385e9e259b74c730cc85fcc9a637e7210f20af3d7ee1703a1d2c203667250d",
+    "legacy-project.rules": "283facf5dd739ce401d04e3660baeb9be188715532355d10de07383146f37bc4"
+  },
+  "rules": [
+    {
+      "pattern": [
+        "bun",
+        "run",
+        [
+          "database:migrate",
+          "codex:sync"
+        ]
+      ],
+      "decision": "forbidden",
+      "justification": "Do not run migrations or sync scripts without explicit user action.",
+      "match": [
+        "bun run database:migrate",
+        "bun run codex:sync"
+      ],
+      "not_match": [
+        "bun run database:generate"
+      ]
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "set",
+        "credentials"
+      ],
+      "decision": "prompt",
+      "justification": "Credentials are sensitive; require explicit approval.",
+      "match": [
+        "agent-browser set credentials \"user\" \"pass\""
+      ]
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "upload"
+      ],
+      "decision": "prompt",
+      "justification": "File uploads can transfer local data; require explicit approval.",
+      "match": [
+        "agent-browser upload \"input[type=file]\" ./tmp/file.png"
+      ]
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        "connect"
+      ],
+      "decision": "prompt",
+      "justification": "Connecting to a remote browser via CDP can expose external contexts; require approval.",
+      "match": [
+        "agent-browser connect 9222",
+        "agent-browser connect http://localhost:9222"
+      ]
+    },
+    {
+      "pattern": [
+        [
+          "agent-browser",
+          "~/.bun/bin/agent-browser",
+          "/Users/coreycoto/.bun/bin/agent-browser"
+        ],
+        [
+          "--cdp",
+          "--headers",
+          "--extension",
+          "--executable-path"
+        ]
+      ],
+      "decision": "prompt",
+      "justification": "Sensitive global options (CDP attach/auth headers/extensions/custom executable) require explicit approval.",
+      "match": [
+        "agent-browser --cdp 9222 snapshot",
+        "agent-browser --headers '{\"Authorization\":\"Bearer TOKEN\"}' open https://example.com",
+        "agent-browser --extension ./my-extension open http://localhost:3000",
+        "agent-browser --executable-path /opt/chromium open https://example.com"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "auth",
+        "login"
+      ],
+      "decision": "prompt",
+      "justification": "Auth changes require explicit approval.",
+      "match": [
+        "gh auth login"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "pr",
+        [
+          "merge",
+          "close",
+          "reopen",
+          "edit",
+          "ready"
+        ]
+      ],
+      "decision": "forbidden",
+      "justification": "Do not modify PR state with the local gh CLI. Use the GitHub Codex Connector; if it is unavailable, stop and report the missing capability.",
+      "match": [
+        "gh pr merge 75",
+        "gh pr close 75",
+        "gh pr reopen 75",
+        "gh pr edit 75 --title \"New title\"",
+        "gh pr ready 75"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "issue",
+        [
+          "close",
+          "reopen"
+        ]
+      ],
+      "decision": "forbidden",
+      "justification": "Do not change issue open/closed state via Codex. Perform manually if needed.",
+      "match": [
+        "gh issue close 123",
+        "gh issue reopen 123"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "repo",
+        "delete"
+      ],
+      "decision": "forbidden",
+      "justification": "Never delete repositories via Codex.",
+      "match": [
+        "gh repo delete coreycoto/coreycoto.com"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "release",
+        [
+          "delete",
+          "edit"
+        ]
+      ],
+      "decision": "forbidden",
+      "justification": "Do not edit or delete releases via Codex. Perform manually if needed.",
+      "match": [
+        "gh release delete v1.2.3",
+        "gh release edit v1.2.3"
+      ]
+    },
+    {
+      "pattern": [
+        "gh",
+        "release",
+        "create"
+      ],
+      "decision": "prompt",
+      "justification": "Release creation, including drafts, requires explicit approval of the repository, tag and publication stage.",
+      "match": [
+        "gh release create v1.2.3",
+        "gh release create v0.7.0 --draft --repo coreycoto/agent-plugins --verify-tag"
+      ]
+    },
+    {
+      "pattern": [
+        "git",
+        [
+          "reset",
+          "clean",
+          "push",
+          "tag"
+        ]
+      ],
+      "decision": "prompt",
+      "justification": "Destructive history/worktree changes and remote publication require approval.",
+      "match": [
+        "git reset --soft HEAD~1",
+        "git clean -fd",
+        "git push",
+        "git tag v1.2.3"
+      ]
+    },
+    {
+      "pattern": [
+        "uv",
+        "publish"
+      ],
+      "decision": "prompt",
+      "justification": "Package publication requires explicit approval of the intended destination and version.",
+      "match": [
+        "uv publish"
+      ]
+    }
+  ]
+}

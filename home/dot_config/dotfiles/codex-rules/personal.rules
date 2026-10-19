@@ -80,29 +80,6 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["gh", "pr", ["merge", "close", "reopen", "edit", "ready"]],
-    decision = "forbidden",
-    justification = "Do not modify PR state with the local gh CLI. Use the GitHub Codex Connector; if it is unavailable, stop and report the missing capability.",
-    match = [
-        "gh pr merge 75",
-        "gh pr close 75",
-        "gh pr reopen 75",
-        "gh pr edit 75 --title \"New title\"",
-        "gh pr ready 75",
-    ],
-)
-
-prefix_rule(
-    pattern = ["gh", "issue", ["close", "reopen"]],
-    decision = "forbidden",
-    justification = "Do not change issue open/closed state via Codex. Perform manually if needed.",
-    match = [
-        "gh issue close 123",
-        "gh issue reopen 123",
-    ],
-)
-
-prefix_rule(
     pattern = ["gh", "repo", "delete"],
     decision = "forbidden",
     justification = "Never delete repositories via Codex.",

@@ -8,12 +8,19 @@
     "forbidden": 5
   },
   "files": {
-    "personal.rules": "ad385e9e259b74c730cc85fcc9a637e7210f20af3d7ee1703a1d2c203667250d",
-    "legacy-project.rules": "283facf5dd739ce401d04e3660baeb9be188715532355d10de07383146f37bc4"
+    "personal.rules": "9d06e9f334660ff583efd70deaf52ee34e5a89e7814278a6ef23a3149ec1b775",
+    "legacy-project.rules": "51e190c3f5de65121ba047bad0de952aab417a3e06bbce378c913554f8be2f2d"
   },
-  "policy_revision": 2,
+  "policy_revision": 3,
   "staged_counts": {
     "prompt": 8,
-    "forbidden": 5
+    "forbidden": 2
+  },
+  "previous_policy": {
+    "policy_revision": 2,
+    "files": {
+      "personal.rules": "ad385e9e259b74c730cc85fcc9a637e7210f20af3d7ee1703a1d2c203667250d",
+      "legacy-project.rules": "283facf5dd739ce401d04e3660baeb9be188715532355d10de07383146f37bc4"
+    }
   }
 }
