@@ -9,6 +9,11 @@
 - Global PATH precedence is Antigravity, `~/.local/bin`, mise shims, Bun global packages,
   Bun itself, Apple Silicon Homebrew, then Intel/local installation paths.
   Only existing directories are added; inherited paths remain after these.
+- Both `.profile` and `.zprofile` retain Docker Desktop's per-user CLI location
+  at `$HOME/.docker/bin` when that directory exists. They append it after
+  existing PATH entries, keep an inherited entry in place, and avoid duplicates
+  when sourced repeatedly. Chezmoi owns this portable setup; Docker settings,
+  credentials, contexts and installed CLI files remain local.
 - Oh My Zsh uses the existing installation when available, with the
   `robbyrussell` theme and `git` and `brew` plugins. Bun completions come from
   the installed `$BUN_INSTALL/_bun` file, avoiding the Bun plugin's background

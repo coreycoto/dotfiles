@@ -6,3 +6,11 @@ if [ -d "$HOME/.local/bin" ]; then
     *) export PATH="$HOME/.local/bin${PATH:+:$PATH}" ;;
   esac
 fi
+
+# Keep Docker Desktop's per-user CLI path after existing entries.
+if [ -d "$HOME/.docker/bin" ]; then
+  case ":${PATH:-}:" in
+    *":$HOME/.docker/bin:"*) ;;
+    *) export PATH="${PATH:+$PATH:}$HOME/.docker/bin" ;;
+  esac
+fi
