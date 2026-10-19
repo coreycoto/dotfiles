@@ -68,3 +68,14 @@ run `brew update`. Mise tool versions come from `mise ls --current --json`
 with offline mode enabled. Update metadata comes from `mise outdated --global
 --json`; neither command launches a CLI or installs a version. Other managers
 and self-updating apps are outside this banner's scope. The startup banner remains disabled by default.
+
+## Verification
+
+`./scripts/check` runs the full suite locally and in CI. CI runs for pull
+requests, pushes to `main`, and manual dispatch, with a five-minute job timeout.
+Each of the three real-terminal animation tests runs in a fresh Python worker
+with a 30-second deadline. A timeout requests a signal-based Python stack dump,
+retains captured terminal output and owned-process details, and kills the
+worker and its observed descendant process groups after a short diagnostic
+grace period. Ordinary test failures retain their traceback and terminal output.
+Worker success, failure and timeout cleanup have independent fixture tests.

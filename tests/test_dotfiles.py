@@ -19,6 +19,8 @@ import time
 import tomllib
 import unittest
 
+from terminal_harness import isolated_terminal_test
+
 
 REPO = Path(__file__).resolve().parents[1]
 FILES = json.loads((REPO / "manifest.json").read_text())["files"]
@@ -41,13 +43,18 @@ class TerminalSession:
         if self.pid == 0:
             os.chdir(home)
             os.execve(zsh, [zsh, "-di"], {**env, "TERM": "xterm-256color", "LC_ALL": "en_US.UTF-8"})
+        sys.stderr.write(f"PTY shell pid={self.pid}\n")
+        sys.stderr.flush()
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
 
     def read_for(self, duration):
         deadline = time.monotonic() + duration
         while time.monotonic() < deadline:
             if select.select([self.fd], [], [], max(0, min(0.05, deadline - time.monotonic())))[0]:
-                self.output += os.read(self.fd, 65536)
+                chunk = os.read(self.fd, 65536)
+                self.output += chunk
+                sys.stderr.buffer.write(chunk)
+                sys.stderr.buffer.flush()
 
     def until(self, text, timeout=5):
         deadline = time.monotonic() + timeout
@@ -913,6 +920,7 @@ tool-status --updates
                 time.sleep(0.02)
         self.assertIn("v50.11.0", cache.read_text())
 
+    @isolated_terminal_test
     def test_refresh_animation_preserves_typed_input_and_prompt_then_cleans_up(self):
         self.install()
         cache = self.status_spies()
@@ -943,6 +951,7 @@ tool-status --updates
             gate.touch()
             self.wait_for(lambda: cache.stat().st_mtime > 0)
 
+    @isolated_terminal_test
     def test_refresh_animation_stays_silent_during_commands_and_discards_old_ticks(self):
         self.install()
         cache = self.status_spies()
@@ -973,6 +982,7 @@ tool-status --updates
             command_gate.touch()
             self.wait_for(cache.exists)
 
+    @isolated_terminal_test
     def test_failed_refresh_shows_failure_and_closes_animation_descriptor(self):
         self.install()
         cache = self.status_spies()
