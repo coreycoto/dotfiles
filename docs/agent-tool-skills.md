@@ -9,15 +9,19 @@ inside existing workflows. Dotfiles owns personal machine setup and activation.
 | Runtime ownership and locked dependencies | Product Development: `implement-change` or `diagnose-problem` |
 | Secret scanning, shell dialects and Git LFS | Product Development: `maintain-verification` or `implement-change` |
 | Browser tools, Turbo, Vercel and Neon | Product Development: `verify-product` or the relevant engineering workflow |
+| Clerk, Stripe and Cloudflare vendor skills and documentation | Product Development: the relevant engineering workflow and its provider reference |
 | GitHub connector/CLI selection and exact-candidate CI evidence | Project Management: `delivery-lifecycle` or `publish-change` |
 | Personal Mise global versions, wrappers and update preferences | Dotfiles: [global-cli-tools](../home/dot_agents/skills/global-cli-tools/SKILL.md) |
 | Chezmoi manifests, source/target state and activation | Dotfiles: [dotfiles-maintenance](../home/dot_agents/skills/dotfiles-maintenance/SKILL.md) |
 
-The first five rows ship in Agent Plugins 0.10.5. Use the reviewed publisher pin
+The first six rows ship in Agent Plugins 0.10.6. Use the reviewed publisher pin
 in the public plugin declaration and verify installed files and fresh-task
 discovery. A marketplace declaration alone does not prove a cloud environment
 loaded the plugins. Runtime and host capabilities need their own qualification.
 Personal setup paths and automatic update schedules are not portable policy.
+Provider implementations remain independently selected and installed; the
+Product Development reference routes tasks to vendor skills and official
+documentation, with a documentation fallback when a specialist is unavailable.
 
 ## Migration and preservation
 
