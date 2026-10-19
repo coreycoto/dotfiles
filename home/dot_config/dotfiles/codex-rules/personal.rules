@@ -1,5 +1,5 @@
 # Staged policy only: this directory is not an active Codex rules layer.
-# Retain these reviewed historical restrictions without importing allowances.
+# Personal escalation boundaries; ordinary maintenance uses the host policy.
 
 prefix_rule(
     pattern = [
@@ -25,31 +25,12 @@ prefix_rule(
             "~/.bun/bin/agent-browser",
             "/Users/coreycoto/.bun/bin/agent-browser",
         ],
-        "network",
-        ["route", "unroute"],
+        "upload",
     ],
     decision = "prompt",
-    justification = "Network interception can change app behavior; require explicit approval.",
-    match = [
-        "agent-browser network route \"**/api/*\" --abort",
-        "agent-browser network unroute \"**/api/*\"",
-    ],
-)
-
-prefix_rule(
-    pattern = [
-        [
-            "agent-browser",
-            "~/.bun/bin/agent-browser",
-            "/Users/coreycoto/.bun/bin/agent-browser",
-        ],
-        ["upload", "install"],
-    ],
-    decision = "prompt",
-    justification = "High-impact commands (uploads/browser install) require explicit approval.",
+    justification = "File uploads can transfer local data; require explicit approval.",
     match = [
         "agent-browser upload \"input[type=file]\" ./tmp/file.png",
-        "agent-browser install",
     ],
 )
 
@@ -86,15 +67,6 @@ prefix_rule(
         "agent-browser --headers '{\"Authorization\":\"Bearer TOKEN\"}' open https://example.com",
         "agent-browser --extension ./my-extension open http://localhost:3000",
         "agent-browser --executable-path /opt/chromium open https://example.com",
-    ],
-)
-
-prefix_rule(
-    pattern = ["fzf"],
-    decision = "prompt",
-    justification = "Interactive tool; prompt before running.",
-    match = [
-        "fzf",
     ],
 )
 
@@ -160,47 +132,22 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", ["reset", "checkout", "clean", "push", "tag", "rebase"]],
+    pattern = ["git", ["reset", "clean", "push", "tag"]],
     decision = "prompt",
-    justification = "Potentially destructive git operations require approval.",
+    justification = "Destructive history/worktree changes and remote publication require approval.",
     match = [
         "git reset --soft HEAD~1",
-        "git checkout main",
         "git clean -fd",
         "git push",
         "git tag v1.2.3",
-        "git rebase main",
     ],
 )
 
 prefix_rule(
-    pattern = ["bunx", "playwright", ["install", "codegen"]],
+    pattern = ["uv", "publish"],
     decision = "prompt",
-    justification = "Browser install and interactive codegen are high-impact; require approval.",
+    justification = "Package publication requires explicit approval of the intended destination and version.",
     match = [
-        "bunx playwright install",
-        "bunx playwright codegen http://localhost:3001",
-    ],
-)
-
-prefix_rule(
-    pattern = ["sed", "-i"],
-    decision = "prompt",
-    justification = "In-place edits require approval.",
-    match = [
-        "sed -i '' 's/foo/bar/' README.md",
-    ],
-)
-
-prefix_rule(
-    pattern = ["uv", ["add", "remove", "publish", "build", "init"]],
-    decision = "prompt",
-    justification = "Dependency or packaging changes should be explicitly approved.",
-    match = [
-        "uv add --project tools/deepmedia speechbrain",
-        "uv remove --project tools/deepmedia rich",
-        "uv build",
         "uv publish",
-        "uv init tools/new-tool",
     ],
 )

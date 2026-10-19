@@ -46,3 +46,33 @@ local installation does not establish a cloud runtime's capabilities.
 Run `./scripts/check` before publication. The disposable-home gate compares actual
 managed files with the manifest, exercises repeated application and preserves
 an unrelated installed skill. Real-home application remains a separate action.
+
+## Scoped Codex cleanup
+
+After plugin installation and fresh-session discovery are verified, compare the
+four retired skill trees with their exact former tracked source before removing
+them: `developer-cli-tools`, `runtime-dependencies`, `repository-checks` and
+`github-workflow`. Preserve a locally edited or unrecognized tree for review.
+Remove only the selected copies; a retired source entry is not authority to
+delete everything under an agent skills directory.
+
+Find Skills is a separate third-party retirement. Its user-wide source is
+`~/.agents/skills/find-skills`; a client entry such as
+`~/.codex/skills/find-skills` may be a symlink to it. Verify that relationship,
+remove the selected client link without traversing it, and remove the selected
+source tree. If `~/.agents/.skill-lock.json` contains its installer entry, remove
+only `skills.find-skills`, preserving every other entry and unknown field.
+Do not run a network installer to remove a local entry.
+
+ui.sh remains under its vendor identity. Independently installed Cloudflare and
+other vendor skills, the two personal managed skills, local overlays, role
+configuration, active command rules, `default.rules` and hook trust are outside
+this skill retirement. Do not prune old plugin caches merely because a new
+version is selected: another chat may retain a hook or server path into them.
+Codex history, sessions, databases and active worktrees are not disposable cache.
+
+Record selected paths, provenance, removed versus preserved state and any
+concurrent drift privately. Keep machine inventories and operational receipts
+out of source. Removing skill files changes future discovery; verify it in a
+new client session separately from plugin installation. Rule activation and
+legacy-policy retirement remain governed by [the staged migration](codex-rules.md).
