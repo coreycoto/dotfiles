@@ -10,16 +10,44 @@ the main Codex configuration remain unmanaged.
 
 The historical home `coreycoto.com.rules` has 92 prefix rules: 73 allowances,
 14 prompts and 5 denials. Its reviewed SHA-256 is recorded in `migration.json`.
-Those counts describe the historical ownership baseline, not a requirement to
-keep every prompt global. Policy revision 2 retains all five denials with their
-exact patterns, aliases, decisions and justifications, and narrows the global
-proposal to eight prompts. The 73 allowances are not imported. The old file
-remains effective until a separately authorized migration and retirement.
+Those counts describe the historical ownership baseline. Revision 2 retained all
+five denials and eight reviewed global prompts. Policy revision 3 keeps those
+eight prompts unchanged and removes three denial groups after a separate review.
+The 73 historical allowances are not imported. `migration.json` records both the
+revision-3 staged digests and the previous revision-2 file digests; these are
+review evidence, not authorization to overwrite active files.
 
 | Prepared file | Rules | Ownership |
 | --- | --- | --- |
-| `personal.rules` | 8 prompts, 4 denials | Browser credentials/uploads/attachment/sensitive options, GitHub authentication and release creation, Git reset/clean/push/tag and uv publication |
-| `legacy-project.rules` | 1 denial | Historical Bun migration/sync restriction; preserve pending separate denial review |
+| `personal.rules` | 8 prompts, 2 denials | Existing personal prompts plus repository deletion and release edit/delete restrictions |
+| `legacy-project.rules` | Empty replacement | Clears the owned revision-2 global Bun restriction during a later authorized activation |
+
+The empty replacement keeps the existing managed target explicit. Staging or
+applying dotfiles does not clear its active counterpart in `.codex/rules`.
+
+## Reviewed denial scope
+
+| Historical denial | Revision 3 treatment |
+| --- | --- |
+| `gh pr merge/close/reopen/edit/ready` | Remove global tool routing; use workflow guidance and the requested delivery stage |
+| `gh issue close/reopen` | Remove the manual-only restriction without adding an approval prompt; use authorized issue workflow and completion evidence |
+| `bun run database:migrate/codex:sync` | Remove globally; script behavior and any migration constraints belong to the owning project |
+| `gh repo delete` | Retain exactly |
+| `gh release delete/edit` | Retain exactly; release editing remains deferred, including draft edits |
+
+Removing a denial adds no allowance. Existing defaults, trusted project rules,
+sandbox behavior and approval policy still apply. Project Management and Product
+Development guidance governs authorized work, but instructional guidance is not
+executable enforcement. Prefix rules do not enforce equivalent connector paths;
+honor each existing action and transport contract without bypassing denials.
+Source preparation does not authorize merging, publishing or issue closure.
+
+The release rule still cannot distinguish a draft from a published release.
+It blocks draft edits too; do not replace it with a broad allow or use another
+transport. A later release-editing decision must separately address exact
+repository/release identity, current state, relevant shell and connector paths,
+unknown state, hook failures and concurrent publication. A read of `isDraft`
+before a write does not guarantee atomic protection.
 
 ## Reviewed prompt scope
 
@@ -30,7 +58,7 @@ allowance cannot override a matching prompt or denial. User rules apply across
 repositories on that host. Project rules load only through a trusted project
 configuration layer; neither location establishes Cloud discovery.
 
-| Historical prompt | Revision 2 treatment |
+| Historical prompt | Retained treatment from revision 2 |
 | --- | --- |
 | Browser credentials | Keep global |
 | Browser request route/unroute | Keep in the owning project's browser-testing policy |
@@ -47,20 +75,10 @@ configuration layer; neither location establishes Cloud discovery.
 | Bun clean/database:check | Keep project-specific; script names have repository-defined meaning |
 | Voiceprint staging path | Keep in the repository that owns the sensitive data |
 
-Removing a prompt does not add an allow rule. With no matching rule, the host's
-remaining sandbox and approval policy determine handling. Unchanged
-`default.rules` or project rules may still allow or restrict the command.
-Initially adding the replacements alongside the historical file keeps all old
-prompts effective. Their removal takes effect only after verified retirement
-of that old file and a separate client reload.
-
-The four GitHub denials cover local CLI PR lifecycle changes, issue closure or
-reopening, repository deletion, and release editing/deletion. They are reasonable
-personal policy candidates and already exist in the home export. Retaining them
-does not change their authority or turn every CLI restriction into a universal
-connector restriction: honor the original action and transport contract, and
-never switch transports to bypass a prohibition. The retained release-create
-prompt is not permission to publish without the requested authority.
+Removing a prompt does not add an allow rule either. An old export or active
+revision-2 files keep their matching restrictions effective until a separately
+authorized replacement and client reload. The release-create prompt is not
+permission to publish without the requested authority.
 
 At coreycoto.com revision `75f3db2de31f2eef90ec065ac6d6e7423bfd4701`, the
 project has one file, `.codex/rules/boundaries.rules`, containing 18 rules:
@@ -68,9 +86,10 @@ project has one file, `.codex/rules/boundaries.rules`, containing 18 rules:
 restrictions; the fifth covers `bun run database:migrate`. The project also
 forbids `gh release create`, while the historical home rule prompts for it.
 The stricter project denial must continue to win when that layer is active.
-The old home `bun run codex:sync` denial is retained even though that command
-was made read-only in project commit `ee2f75a888360cf23d445d850886d1948b34d23b`.
-Removing obsolete restrictions is a separate policy decision.
+Revision 3 removes the old global Bun restriction. The project made
+`codex:sync` read-only in commit
+`ee2f75a888360cf23d445d850886d1948b34d23b`. Its remaining project-specific
+restrictions are unchanged by this dotfiles proposal.
 
 The project already retains request interception, Bun clean/database checks and
 voiceprint staging prompts. Those three prompts are deliberately absent from
@@ -99,50 +118,48 @@ migration; it is not a general claim of ownership over the user's rules folder.
 
 ## Later activation and retirement
 
-After source merge, obtain separate authorization for the exact home migration.
-Use a scoped staging apply; unrelated shell drift, including Docker Desktop PATH
-additions, does not need to be applied. Before changing active rules:
+Source merge and staging application are separate from active installation.
+This revision does not activate anything. Before a later authorized activation:
 
-1. Review the exact prepared files and their SHA-256 values. Run the preflight;
-   require `ready_for_review`, including the expected legacy digest. Compare the
-   actual complete active rule combination with the prepared replacement using
-   `codex execpolicy check --rules FILE ... -- COMMAND` and the historical cases.
-   Include `default.rules`, other user files and the applicable trusted project
-   rules. Keep all real commands as argument data to the checker, never execute
-   them. Inspect unrelated rules locally without publishing their contents.
-2. Create a private backup of the affected rule files and configuration, modes
-   and digests. Existing backup.py covers managed targets, so it is not a backup
-   of the unmanaged active rules; retain a dedicated verified backup before this
-   migration. Record ownership only for the two replacement files.
-3. Quiesce other clients or editors that can write command rules. Recheck source,
-   legacy and destination digests immediately before writing. Abort on drift.
-   Install the two exact reviewed files into `.codex/rules/` with private modes,
-   preserving unrelated files, `default.rules`, trust and configuration. Initially
-   retain `coreycoto.com.rules` alongside the replacements.
-4. Restart/reload the relevant Codex clients and verify rule discovery separately
-   from file installation. File-combination checks are offline policy evidence,
-   not proof of the active session's configuration. If available, use native
-   decision diagnostics or a harmless local `--help` invocation that matches a
-   denied prefix; never verify by trying a real release or business-data change.
-5. Only after separately authorized retirement, verified backups, unchanged
-   ownership/digests and replacement qualification, remove the exact old export.
-   Test the resulting complete combination and reload again. This removes its
-   73 allowances, so some formerly allowed commands may require host review.
-   All five historical denials and eight reviewed global prompts must remain
-   represented. Keep project-specific prompts in the owning repository. Preserve the backup
-   and report source, staging, active installation, reload and runtime evidence
-   separately. On failure, retain the old file and evidence; do not retry blindly.
+1. Review the exact revision-3 files and digests, and identify the current active
+   baseline. For the original export, the preflight requires its exact historical
+   digest. For an installed revision 2, compare both active file digests with
+   `migration.json`'s `previous_policy.files` and the prior private ownership
+   receipt. The preview deliberately reports `conflict` for revision-2 bytes;
+   it has no upgrade or overwrite mode. Do not treat that result as permission
+   to write. Missing, edited or ambiguous baselines require further review.
+2. Back up affected active files privately with their modes and digests.
+   Managed-target backup.py does not back up unmanaged active rules. Quiesce
+   other rule writers and recheck source and destination ownership immediately
+   before writing; abort on drift. Do not overwrite locally edited files.
+3. Qualify the complete proposed combination with the existing native checker:
+   `codex execpolicy check --rules FILE ... -- COMMAND`. Include unchanged
+   `default.rules`, unrelated user rules and applicable trusted project rules.
+   Use commands only as argument data; never execute a provider operation as a
+   policy test. Removed global denials may still match a stricter project rule.
+4. Only under separate exact-baseline activation authorization, replace the two
+   owned files with the reviewed bytes and private modes. Preserve unrelated
+   rules, `default.rules`, configuration and hook trust. Retain the empty
+   `legacy-project.rules` replacement so the old global Bun denial is cleared.
+   If the original export is still active, leave its retirement pending until
+   separately authorized; overlap keeps its old restrictions effective.
+5. After installation, reload the relevant clients and verify rule discovery
+   separately from offline checks. Preserve both remaining denial groups and
+   all eight prompts. Report source, staging, active installation, hook trust,
+   reload and runtime evidence as separate stages. On failure, preserve backups
+   and the failed-operation evidence; do not retry blindly.
 
 A preflight read cannot make later writes race-free. If exclusive access cannot
-be established, leave retirement pending. A policy check is neither connector
+be established, leave activation pending. A policy check is neither connector
 enforcement nor hook trust, and does not make release draft-state checks atomic.
 
-The native checker suite uses offline synthetic defaults, project prompts and
-legacy-overlap fixtures. It checks every denied prefix and reviewed global
-prompt in both file orders, verifies routine commands fall back without adding
-allowances, preserves remembered allowances, and keeps draft release edits
-forbidden. CI installs the pinned Codex 0.162.1 checker so these tests run there
-as well as locally. No test executes a release or provider command.
+The native checker suite uses offline synthetic defaults, project prompts,
+revision-2 and historical-overlap fixtures. It checks every retained denial and
+prompt in both file orders; removed prefixes fall back with no new allowances.
+Explicit synthetic allowances and stricter prompt/forbidden layers remain
+respected in both orders. Draft release edits stay forbidden. CI installs the
+pinned Codex 0.162.1 checker so these tests run there as well as locally.
+No test executes a release or provider command.
 
 Sources: [Codex rules](https://learn.chatgpt.com/docs/agent-configuration/rules),
 [coreycoto.com sync retirement](https://github.com/coreycoto/coreycoto.com/commit/ee2f75a888360cf23d445d850886d1948b34d23b).

@@ -1,16 +1,4 @@
 # Staged policy only: this directory is not an active Codex rules layer.
-# Preserve this historical global denial until a separate policy review.
-# Project-specific prompts remain in the owning repository, not this file.
-
-prefix_rule(
-    pattern = ["bun", "run", ["database:migrate", "codex:sync"]],
-    decision = "forbidden",
-    justification = "Do not run migrations or sync scripts without explicit user action.",
-    match = [
-        "bun run database:migrate",
-        "bun run codex:sync",
-    ],
-    not_match = [
-        "bun run database:generate",
-    ],
-)
+# Revision 3 retires the global Bun migration/sync denial.
+# Keep this empty replacement so a later reviewed activation can clear the
+# owned revision-2 file without deleting or editing unrelated project rules.

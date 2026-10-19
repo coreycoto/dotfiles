@@ -195,7 +195,9 @@ never grants hook trust, approves an agent-install form or reloads a chat.
 ## Personal command rules
 
 The [staged rule migration](codex-rules.md) retains the known historical home
-export's prompts and denials without importing its broad allowances. Chezmoi
+export's eight reviewed prompts, repository deletion protection and release
+edit/delete restriction without importing its broad allowances. Revision 3
+removes the global PR-routing, issue-state and Bun-script denials. Chezmoi
 only stages files under `.config/dotfiles/codex-rules`; the read-only
 `scripts/codex-rules.py` preflight checks ownership and drift. Active policies,
 `default.rules`, hook trust and removal of the old export require a separate

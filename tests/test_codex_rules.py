@@ -17,14 +17,11 @@ REPO = Path(__file__).resolve().parents[1]
 BUNDLE = REPO / "home/dot_config/dotfiles/codex-rules"
 FIXTURE = json.loads((REPO / "tests/fixtures/legacy-codex-boundaries.json").read_text())
 REVIEW = json.loads((REPO / "tests/fixtures/codex-policy-review.json").read_text())
+PREVIOUS = json.loads((REPO / "tests/fixtures/codex-policy-revision-2.json").read_text())
 spec = importlib.util.spec_from_file_location("codex_rules", REPO / "scripts/codex-rules.py")
 rules = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(rules)
 CODEX = os.environ.get("CODEX_TEST_BINARY") or shutil.which("codex")
-
-
-def signature(rule):
-    return json.dumps({"pattern": rule["pattern"], "decision": rule["decision"]}, sort_keys=True)
 
 
 def staged_rules():
@@ -125,13 +122,14 @@ class CodexRuleTests(unittest.TestCase):
         self.assertIn("unrecognized arguments", result.stderr)
         self.assertFalse((self.active / "personal.rules").exists())
 
-    def test_all_five_denials_survive_and_only_reviewed_global_prompts_remain(self):
+    def test_only_reviewed_denials_are_removed_and_all_other_rules_are_unchanged(self):
         actual = staged_rules()
         self.assertTrue(all(rule["decision"] in {"prompt", "forbidden"} for rule in actual))
         self.assertCountEqual(
-            [signature(rule) for rule in actual if rule["decision"] == "forbidden"],
-            [signature(rule) for rule in FIXTURE["restrictions"] if rule["decision"] == "forbidden"],
+            actual,
+            [rule for rule in PREVIOUS["rules"] if rule["pattern"] not in REVIEW["retired_denials"]],
         )
+        self.assertEqual(sum(rule["decision"] == "forbidden" for rule in actual), 2)
         self.assertCountEqual(
             [rule["pattern"] for rule in actual if rule["decision"] == "prompt"],
             REVIEW["global_prompts"],
@@ -139,9 +137,20 @@ class CodexRuleTests(unittest.TestCase):
         metadata = json.loads((BUNDLE / "migration.json").read_text())
         self.assertEqual(metadata["legacy_sha256"], FIXTURE["source_sha256"])
         self.assertEqual(metadata["legacy_counts"], {"allow": 73, "prompt": 14, "forbidden": 5})
-        self.assertEqual(metadata["staged_counts"], {"prompt": 8, "forbidden": 5})
-        self.assertEqual(len(actual), 13)
-        self.assertEqual(rules.preview(self.home, self.bundle)["policy_revision"], 2)
+        self.assertEqual(metadata["staged_counts"], {"prompt": 8, "forbidden": 2})
+        self.assertEqual(metadata["previous_policy"], {"policy_revision": 2, "files": PREVIOUS["files"]})
+        self.assertEqual(len(actual), 10)
+        self.assertEqual(rules.preview(self.home, self.bundle)["policy_revision"], 3)
+        self.assertEqual(ast.parse((BUNDLE / "legacy-project.rules").read_text()).body, [])
+
+    def test_previous_revision_is_a_conflict_and_is_never_silently_upgraded(self):
+        for name in PREVIOUS["files"]:
+            (self.active / name).write_text("# installed revision 2; preserve until activation\n")
+        before = {p.name: p.read_bytes() for p in self.active.iterdir()}
+        report = rules.preview(self.home, self.bundle)
+        self.assertEqual(report["status"], "conflict")
+        self.assertTrue(all(t["state"] == "conflict" for t in report["targets"]))
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.active.iterdir()})
 
     @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
     def test_native_combinations_preserve_reviewed_boundaries_in_both_file_orders(self):
@@ -164,6 +173,12 @@ class CodexRuleTests(unittest.TestCase):
                 for ordering in (prefix, reverse):
                     with self.subTest(command=command, ordering=ordering):
                         self.assertEqual(self.check(ordering, command), rule["decision"])
+        # Removing a global denial does not override a stricter default/project layer.
+        for pattern in REVIEW["retired_denials"]:
+            for command in expanded(pattern):
+                for ordering in (prefix, reverse):
+                    with self.subTest(retired_command=command, ordering=ordering):
+                        self.assertEqual(self.check(ordering, command), "allow")
         # The remaining project's stricter release-create denial must still win.
         project = self.home / "fixture-project.rules"
         project.write_text('prefix_rule(pattern = ["gh", "release", ["create", "edit", "delete"]], decision = "forbidden")\n')
@@ -182,7 +197,7 @@ class CodexRuleTests(unittest.TestCase):
         prefix = [CODEX, "execpolicy", "check"]
         for name in sorted(rules.NAMES):
             prefix += ["--rules", str(BUNDLE / name)]
-        commands = REVIEW["routine_commands"] + [list(c) for p in REVIEW["project_prompts"] for c in expanded(p)]
+        commands = REVIEW["routine_commands"] + [list(c) for p in REVIEW["project_prompts"] + REVIEW["retired_denials"] for c in expanded(p)]
         for command in commands:
             with self.subTest(command=command):
                 self.assertIsNone(self.check(prefix, command))
@@ -195,6 +210,21 @@ class CodexRuleTests(unittest.TestCase):
             for command in expanded(pattern):
                 with self.subTest(project_command=command):
                     self.assertEqual(self.check(prefix + ["--rules", str(project)], command), "prompt")
+
+    @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
+    def test_removed_denials_still_defer_to_both_stricter_layer_decisions_and_orders(self):
+        staged = [argument for name in sorted(rules.NAMES) for argument in ("--rules", str(BUNDLE / name))]
+        for decision in ("prompt", "forbidden"):
+            layer = self.home / "fixture-stricter.rules"
+            layer.write_text("\n".join(
+                f"prefix_rule(pattern = {json.dumps(pattern)}, decision = {json.dumps(decision)})"
+                for pattern in REVIEW["retired_denials"]
+            ))
+            for arguments in (["--rules", str(layer), *staged], [*staged, "--rules", str(layer)]):
+                for pattern in REVIEW["retired_denials"]:
+                    for command in expanded(pattern):
+                        with self.subTest(decision=decision, command=command, arguments=arguments):
+                            self.assertEqual(self.check([CODEX, "execpolicy", "check", *arguments], command), decision)
 
     @unittest.skipUnless(CODEX, "Native execpolicy checks require an existing Codex binary")
     def test_unchanged_remembered_allowance_survives_prompt_removal(self):
