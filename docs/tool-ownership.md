@@ -7,7 +7,7 @@
 | Bun | Mise | Global `1` follows Bun 1.x with update checks every 6 hours; exact project selectors override it |
 | chezmoi, gh, Git LFS, Gitleaks, ShellCheck, uv | Mise registry backends | Global `latest`, command-triggered update checks every 6 hours |
 | ripgrep, fd, fzf, zoxide, bat | Mise registry backends | Global `latest`, command-triggered update checks every 6 hours; optional shell integration stays local |
-| actionlint, cargo-deny, shfmt, SwiftFormat, SwiftLint, Codex CLI, Pandoc | Mise registry backends | Global `latest`, update checks every 6 hours; Swift binaries are selected on macOS |
+| actionlint, Lefthook, cargo-deny, shfmt, SwiftFormat, SwiftLint, Codex CLI, Pandoc | Mise registry backends | Global `latest`, update checks every 6 hours; Swift binaries are selected on macOS |
 | Tokei | Mise Cargo backend | Global `latest`, update checks every 6 hours; `features = "all"` preserves JSON/CBOR/YAML support |
 | yt-dlp | Mise GitHub backend | Global `latest`, update checks every 6 hours; publisher's standalone macOS executable |
 | Mole | Mise GitHub backend | Global `latest`, update checks every 6 hours on macOS; source scripts and native helpers |

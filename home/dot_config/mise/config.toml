@@ -22,6 +22,7 @@ bat = { version = "latest", auto_update = "6h" }
 # Additional standalone tools; keep native dependency stacks in Homebrew.
 # Preserve upstream actionlint rather than the shorthand's suggested fork.
 "aqua:rhysd/actionlint" = { version = "latest", auto_update = "6h" }
+lefthook = { version = "latest", auto_update = "6h" }
 cargo-deny = { version = "latest", auto_update = "6h" }
 shfmt = { version = "latest", auto_update = "6h" }
 swiftformat = { version = "latest", auto_update = "6h", os = ["macos"] }

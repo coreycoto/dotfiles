@@ -70,7 +70,7 @@ updater dispatch failure. Agent-browser uses `npm:agent-browser`: its package
 includes the native executable and version-matched workflow assets, which the
 standalone aqua download lacks. No Bun-global postinstall trust is added.
 
-The selection also includes actionlint, cargo-deny, shfmt, SwiftFormat,
+The selection also includes actionlint, Lefthook, cargo-deny, shfmt, SwiftFormat,
 SwiftLint, Tokei, Codex CLI, Pandoc, yt-dlp and Mole. Update checks every 6 hours
 follow the authored requests. Keep existing installations until replacement
 workflows have been verified.
