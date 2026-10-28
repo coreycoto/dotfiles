@@ -5,13 +5,13 @@
     {
       "name": "agent-plugins",
       "url": "https://github.com/coreycoto/agent-plugins.git",
-      "ref": "9d45fc8a1aad7e83da0ab96079dff723dda6e1f5",
+      "ref": "f89d7056e0d91aa3cec2df4935de6a7cbc87091f",
       "optional": false,
       "plugins": {
-        "communication": "0.10.6",
-        "product-development": "0.10.6",
-        "product-management": "0.10.6",
-        "project-management": "0.10.6"
+        "communication": "0.10.8",
+        "product-development": "0.10.8",
+        "product-management": "0.10.8",
+        "project-management": "0.10.8"
       },
       "sparse_paths": [
         ".agents/plugins"
