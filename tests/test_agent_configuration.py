@@ -461,6 +461,55 @@ else:
         return module, desired, source, publisher, installed
 
     @unittest.skipUnless(CODEX_NATIVE, "Native Codex integration is verified separately when available")
+    def test_native_git_pin_preserves_legacy_reviewer(self):
+        module, desired, source, publisher, installed = self.native_package_fixture()
+        self.config.write_text('approvals_reviewer = "guardian_subagent"\n' + self.config.read_text())
+        before = tomllib.loads(self.config.read_text())
+        with mock.patch.dict(module.bootstrap_native.__globals__,
+                             run=lambda *_args, **_kwargs: "codex-cli 0.162.1",
+                             inventory=lambda *_: installed,
+                             source_checkout=lambda *_: publisher,
+                             build=lambda _home, _source, dest: shutil.copytree(publisher, dest)):
+            report = module.bootstrap(self.home.resolve(), desired, CODEX_NATIVE, True)
+        self.assertTrue(report["applied"])
+        after = tomllib.loads(self.config.read_text())
+        self.assertEqual(after["marketplaces"][source["name"]]["ref_name"], source["ref"])
+        self.assertEqual({k: v for k, v in after.items() if k != "marketplaces"}, before)
+
+    def test_native_config_guard_rejects_drift_before_write(self):
+        module = load_script("agent-plugins")
+        self.config.write_text('approvals_reviewer = "guardian_subagent"\n' + self.config.read_text())
+        before = tomllib.loads(self.config.read_text())
+        for drift in ("unrelated", "reviewer"):
+            with self.subTest(drift=drift):
+                self.config.write_text('approvals_reviewer = "guardian_subagent"\n' + self.original.decode())
+                observed = dict(before, approvals_reviewer="auto_review")
+                calls = []
+
+                class FakeRpc:
+                    def __init__(self, *_):
+                        self.process = mock.Mock()
+                    def call(self, method, _params):
+                        calls.append(method)
+                        if method == "config/read":
+                            if drift == "unrelated":
+                                observed["model"] = "changed"
+                            else:
+                                self_config = self_path.read_text().replace("guardian_subagent", "auto_review")
+                                self_path.write_text(self_config)
+                            return {"layers": [{"name": {"type": "user", "file": str(self_path)},
+                                                "config": observed, "version": "fixture"}]}
+                        return {}
+                    def close(self):
+                        pass
+
+                self_path = self.config
+                with mock.patch.dict(module.native_config_write.__globals__, Rpc=FakeRpc):
+                    with self.assertRaisesRegex(ValueError, "configuration changed"):
+                        module.native_config_write(self.home, "codex", before, {"marketplaces.fixture": {}})
+                self.assertNotIn("config/batchWrite", calls)
+
+    @unittest.skipUnless(CODEX_NATIVE, "Native Codex integration is verified separately when available")
     def test_native_git_pin_preserves_settings_and_matching_packages(self):
         module, desired, source, publisher, installed = self.native_package_fixture()
         calls = []

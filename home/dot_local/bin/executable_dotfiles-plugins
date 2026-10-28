@@ -508,7 +508,16 @@ def native_config_write(home, codex, before, edits):
                       if x["name"].get("type") == "user"
                       and x["name"].get("file") == str(target)
                       and not x["name"].get("profile")), None)
-        if layer is None or layer["config"] != before:
+        # Codex normalizes this legacy value in config/read while leaving the
+        # original spelling in config.toml. Compare its semantic value only;
+        # still require the file itself to match the original snapshot exactly.
+        comparable = copy.deepcopy(before)
+        if comparable.get("approvals_reviewer") == "guardian_subagent":
+            comparable["approvals_reviewer"] = "auto_review"
+        native = copy.deepcopy(layer["config"]) if layer is not None else None
+        if native is not None and native.get("approvals_reviewer") == "guardian_subagent":
+            native["approvals_reviewer"] = "auto_review"
+        if layer is None or native != comparable or configuration(home) != before:
             raise ValueError("Codex user configuration changed or its version is unavailable")
         rpc.call("config/batchWrite", {
             "edits": [{"keyPath": k, "value": v, "mergeStrategy": "replace"} for k, v in edits.items()],
