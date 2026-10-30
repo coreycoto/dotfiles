@@ -12,7 +12,7 @@ Install the Apple developer tools and Homebrew explicitly. Follow
 official binary, then install the validation tools:
 
 ```sh
-mise install python@3.13.16 chezmoi@latest gitleaks@latest shellcheck@latest uv@latest
+mise install python@3.15.2 chezmoi@latest gitleaks@latest shellcheck@latest uv@latest
 ```
 
 Clone the published repository without applying it:
@@ -21,7 +21,7 @@ Clone the published repository without applying it:
 git clone https://github.com/coreycoto/dotfiles.git
 cd dotfiles
 ./scripts/enable-hooks
-MISE_OFFLINE=1 mise exec python@3.13.16 chezmoi@latest gitleaks@latest shellcheck@latest uv@latest -- ./scripts/check
+MISE_OFFLINE=1 mise exec python@3.15.2 chezmoi@latest gitleaks@latest shellcheck@latest uv@latest -- ./scripts/check
 ```
 
 Alternatively, `chezmoi init coreycoto/dotfiles` clones into chezmoi's default

@@ -25,7 +25,7 @@
 | .NET SDKs | Existing host SDK installation | Project `global.json`, including roll-forward policy |
 | Python dependencies and virtual environments | uv / project tooling | Project manifest and lockfile; installed Mise interpreter |
 
-The exact runtime defaults remain Node 24.21.0, Python 3.13.16 and Rust 1.97.1
+The exact runtime defaults are Node 26.13.0, Python 3.15.2 and Rust 1.99.1
 with rustfmt and Clippy. Bun follows the `1` request: any stable Bun 1.x release
 can become the global default after the release delay and a due command-triggered
 update. Project Bun pins remain exact. Mise's Rustup and Cargo directories stay

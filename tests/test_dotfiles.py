@@ -283,7 +283,7 @@ Host ssh-example
         self.env["MISE_DATA_DIR"] = str(self.state / "data/mise")
         self.env["MISE_CACHE_DIR"] = str(self.state / "mise-cache")
         self.env["MISE_CONFIG_DIR"] = str(self.test_home / ".config/mise")
-        for version in ("24.21.0", "22.23.3"):
+        for version in ("26.13.0", "22.23.3"):
             runtime = self.root / "runtimes" / version
             self.write(runtime / "bin/node", f"#!/bin/sh\nprintf 'v{version}\\n'\n", executable=True)
             self.run_command([shutil.which("mise"), "link", f"node@{version}", str(runtime)])
@@ -304,11 +304,11 @@ node --version
 source "$HOME/.zshrc"
 node --version
 ''', flags="-di")
-        self.assertEqual(result.stdout.splitlines(), ["v24.21.0", "v22.23.3", "v24.21.0", "v24.21.0"])
+        self.assertEqual(result.stdout.splitlines(), ["v26.13.0", "v22.23.3", "v26.13.0", "v26.13.0"])
         self.assertEqual(result.stderr, "")
         self.write(project / "node_modules/.bin/node", "#!/bin/sh\nprintf 'project-cli\\n'\n", executable=True)
         result = self.shell('cd "$DOTFILES_TEST_PROJECT"; node --version; cd "$HOME"; node --version', flags="-di")
-        self.assertEqual(result.stdout.splitlines(), ["project-cli", "v24.21.0"])
+        self.assertEqual(result.stdout.splitlines(), ["project-cli", "v26.13.0"])
 
     def test_missing_project_runtime_fails_without_installing_or_falling_back(self):
         self.install()

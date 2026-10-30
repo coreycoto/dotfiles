@@ -1,7 +1,7 @@
 # Rust toolchains and local configuration
 
 Mise owns the selected Rust toolchains through its Rustup backend. The authored
-default is Rust `1.97.1`, the minimal installation profile, and the additional
+default is Rust `1.99.1`, the minimal installation profile, and the additional
 `rustfmt` and `clippy` components. Its isolated homes are
 `~/.local/share/dotfiles/rustup` and `~/.local/share/dotfiles/cargo`, selected by
 the `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` settings already in this repository.
@@ -13,7 +13,7 @@ After the reviewed dotfiles are explicitly applied, install the declared runtime
 and regenerate shims as described in [tool ownership](tool-ownership.md):
 
 ```sh
-mise install rust@1.97.1
+mise install rust@1.99.1
 mise reshim
 mise exec -- rustc --version
 mise exec -- cargo --version
