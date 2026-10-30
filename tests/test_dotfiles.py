@@ -415,7 +415,7 @@ bun --version
         source = REPO / "home/dot_config/mise/config.toml"
         installed = self.test_home / ".config/mise/config.toml"
         before_source, before_installed = source.read_bytes(), installed.read_bytes()
-        result = self.shell("dotfiles-tools --update", flags="-di")
+        result = self.shell("dotfiles update --dry-run", flags="-di")
         self.assertIn("upgrade --global --dry-run", result.stdout)
         self.assertIn("npm:neon", result.stdout)
         self.assertIn("github:coreycoto/git-slop", result.stdout)
@@ -424,6 +424,19 @@ bun --version
         self.assertNotIn(" install ", calls)
         self.assertEqual(source.read_bytes(), before_source)
         self.assertEqual(installed.read_bytes(), before_installed)
+
+    def test_installed_dotfiles_cli_shows_help_and_previews_upgrades(self):
+        self.install()
+        self.status_spies()
+        self.env["PATH"] = str(self.test_home / ".local/bin") + os.pathsep + self.env["PATH"]
+        launcher = self.test_home / ".local/bin/dotfiles"
+        self.assertFalse((self.test_home / ".local/bin/dotfiles-tools").exists())
+        help_result = self.run_command([str(launcher), "--help"], cwd=self.root)
+        self.assertIn("update", help_result.stdout)
+        result = self.run_command([str(launcher), "update", "--dry-run"], cwd=self.root)
+        self.assertIn("upgrade --global --dry-run", result.stdout)
+        self.assertIn("npm:neon", result.stdout)
+        self.assertIn("mise --cd ", (self.root / "command-log").read_text())
 
     def test_gh_steward_extension_forwards_arguments_and_exit_status_to_mise(self):
         self.install()

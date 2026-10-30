@@ -29,7 +29,7 @@
     {"source": "home/dot_agents/plugins/marketplace.json.tmpl", "target": ".agents/plugins/marketplace.json"},
     {"source": "home/dot_config/dotfiles/agent-plugins.json", "target": ".config/dotfiles/agent-plugins.json"},
     {"source": "home/dot_local/bin/executable_dotfiles-plugins", "target": ".local/bin/dotfiles-plugins"},
-    {"source": "home/dot_local/bin/executable_dotfiles-tools.tmpl", "target": ".local/bin/dotfiles-tools"},
+    {"source": "home/dot_local/bin/executable_dotfiles.tmpl", "target": ".local/bin/dotfiles"},
     {"source": "home/dot_local/bin/executable_dotfiles-mise-status", "target": ".local/bin/dotfiles-mise-status"},
     {"source": "home/dot_local/share/dotfiles/gh-steward/executable_gh-steward", "target": ".local/share/dotfiles/gh-steward/gh-steward"},
     {"source": "home/dot_config/dotfiles/codex-rules/personal.rules", "target": ".config/dotfiles/codex-rules/personal.rules"},

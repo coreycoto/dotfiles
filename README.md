@@ -24,6 +24,15 @@ chezmoi --source "$PWD" --no-pager diff
 Review the diff, then follow [apply and verify](docs/setup.md#apply-and-verify).
 Use [recovery](docs/recovery.md) to restore a selected backup.
 
+After applying the dotfiles, `dotfiles --help` shows the available commands.
+Use `dotfiles install` for the selected Mise tools, `dotfiles update` to upgrade
+them within their configured requests, and `dotfiles check` to validate this
+checkout. Add `--dry-run` to install or update to preview the operation.
+These commands use the checkout recorded when the launcher was applied;
+`update` does not pull the repository or apply home configuration. `check`
+runs the full development gate, including a disposable-home installation, and
+does not verify drift in the current home.
+
 ## Documentation
 
 - [Shell behavior and status banner](docs/shell.md)

@@ -29,9 +29,10 @@
   `tool-status --updates` checks available updates without installing anything.
   Both paths suppress shim-triggered upgrades; the startup banner remains quiet
   and offline except for its detached metadata refresh.
-- `dotfiles-tools` previews installation; `--apply` installs the authored global
-  selection. `dotfiles-tools --update` runs an upgrade dry run; add `--apply`
-  to upgrade within existing requests.
+- `dotfiles install` installs the authored global selection, and `dotfiles update`
+  upgrades within existing requests. Add `--dry-run` to preview either command.
+  `dotfiles check` runs the checkout's validation suite in a disposable home.
+  `dotfiles --help` lists the commands.
 - Existing history location and settings are retained; history is never
   committed. The OS continues to determine the login shell's `SHELL` value.
 

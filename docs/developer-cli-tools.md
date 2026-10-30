@@ -4,7 +4,7 @@ The Mise config declares ripgrep, fd, fzf, zoxide, and bat as native tools.
 Install them explicitly from a reviewed checkout with the normal command:
 
 ```sh
-dotfiles-tools --apply
+dotfiles install
 ```
 
 | Task | Tool | Agent use |

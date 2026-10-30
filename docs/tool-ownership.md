@@ -53,9 +53,9 @@ Keep `~/.local/bin` ahead of Homebrew and verify `command -v mise`.
 After reviewing and applying the dotfiles, preview the authored selection:
 
 ```sh
-dotfiles-tools
+dotfiles install --dry-run
 # Installs the global selection only after the source and live configs match:
-dotfiles-tools --apply
+dotfiles install
 mise reshim
 ```
 
@@ -163,15 +163,15 @@ Qualify `mo --version`, help, and a bounded read-only analysis before activation
 do not use Mole's self-update command on a Mise-managed installation.
 
 ```sh
-dotfiles-tools --update         # Mise's actual upgrade dry run
-dotfiles-tools --update --apply # upgrade within existing global requests
+dotfiles update --dry-run # Mise's actual upgrade dry run
+dotfiles update           # upgrade within existing global requests
 mise outdated --global
 mise doctor
 ```
 
 The helper never passes `--bump` or rewrites authored requests. Update a version
 range deliberately in the source, validate it, and apply the config separately.
-Use `dotfiles-tools` for the authored Mise selection. Normal chezmoi
+Use `dotfiles` for the authored Mise selection. Normal chezmoi
 application preserves unmanaged files and does not uninstall software.
 
 `tool-status` reads Mise's installed metadata with `MISE_OFFLINE=1`, never by

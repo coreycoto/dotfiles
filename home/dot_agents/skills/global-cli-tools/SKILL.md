@@ -11,8 +11,9 @@ dotfiles. Read the reviewed checkout's `docs/tool-ownership.md` and
 consumer configuration. Do not impose the Mac setup on a cloud development VM.
 
 The dotfiles own global requests in `~/.config/mise/config.toml`.
-`dotfiles-tools` previews installation, and `dotfiles-tools --update` previews
-upgrades. Add `--apply` only for an authorized install or upgrade. Selected
+`dotfiles install --dry-run` previews installation, and `dotfiles update --dry-run`
+previews upgrades. Run `dotfiles install` or `dotfiles update` only when the
+corresponding operation is authorized. Selected
 global CLIs opt into command-triggered update checks every six hours; project
 pins still win. Inspect current configuration before relying on that schedule.
 Keep status checks offline with automatic installation disabled, and preserve

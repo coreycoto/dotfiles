@@ -48,8 +48,8 @@ Follow [setup](setup.md) to back up, preview and explicitly apply the configurat
 Then preview the authored software selection before installing it:
 
 ```sh
-dotfiles-tools
-dotfiles-tools --apply
+dotfiles install --dry-run
+dotfiles install
 mise reshim
 ```
 
