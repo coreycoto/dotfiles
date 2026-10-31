@@ -156,27 +156,15 @@ _dotfiles_tool_status_indicator() {
   esac
 }
 
-tool-status() {
+_dotfiles_status() {
   emulate -L zsh
-  (( $# <= 1 )) || { print -u2 'Usage: tool-status [--updates]'; return 2; }
-  case "${1:-}" in
-    '') _dotfiles_tool_status_collect 0 ;;
-    --updates)
-      local result=0 cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/tool-status/status-v2.txt"
-      _dotfiles_tool_status_refresh || result=$?
-      if (( result )); then
-        print -u2 'The update check could not run; another check may already be running.'
-        return "$result"
-      fi
-      _dotfiles_tool_status_print_cache "$cache_file"
-      ;;
-    *) print -u2 'Usage: tool-status [--updates]'; return 2 ;;
-  esac
-}
-
-# Preserve the old function name for existing manual use.
-print_tool_status() {
-  tool-status "$@"
+  local result=0 cache_file="${XDG_CACHE_HOME:-$HOME/.cache}/dotfiles/tool-status/status-v2.txt"
+  _dotfiles_tool_status_refresh || result=$?
+  if (( result )); then
+    print -u2 'The update check could not run; another check may already be running.'
+    return "$result"
+  fi
+  _dotfiles_tool_status_print_cache "$cache_file"
 }
 
 _dotfiles_tool_status_startup() {

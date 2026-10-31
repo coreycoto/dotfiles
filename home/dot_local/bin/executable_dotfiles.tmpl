@@ -1,12 +1,48 @@
-#!/usr/bin/env python3
-"""Run the dotfiles CLI from the reviewed checkout."""
+#!/bin/zsh -f
+# Run the dotfiles CLI from the reviewed checkout.
 
-import os
-from pathlib import Path
-import sys
+script='{{ replace "'" "'\\''" .chezmoi.sourceDir }}/../scripts/dotfiles.py'
+if [[ ! -f "$script" ]]; then
+  print -u2 'Dotfiles checkout is unavailable; reapply dotfiles from your current checkout.'
+  exit 1
+fi
 
-
-script = Path({{ .chezmoi.sourceDir | toJson }}) / ".." / "scripts" / "dotfiles.py"
-if not script.is_file():
-    raise SystemExit("Dotfiles checkout is unavailable; reapply dotfiles from your current checkout.")
-os.execv(sys.executable, [sys.executable, str(script), *sys.argv[1:]])
+# Status and updates are home-level operations. Do not resolve Python
+# from the current project's command directories before the collector can
+# remove those directories from PATH.
+if [[ "${1:-}" == status || "${1:-}" == update ]]; then
+  if [[ "$1" == update ]]; then
+    # Save the caller's actual preferences for the upgrade before applying
+    # temporary guards to the Python shim that starts the CLI.
+    local name saved_name present_name
+    for name in MISE_OFFLINE MISE_AUTO_INSTALL MISE_EXEC_AUTO_INSTALL MISE_NOT_FOUND_AUTO_INSTALL; do
+      saved_name="DOTFILES_SAVED_$name"
+      present_name="DOTFILES_SAVED_PRESENT_$name"
+      if (( ${+parameters[$name]} )); then
+        export "$saved_name=${(P)name}" "$present_name=1"
+      else
+        export "$present_name=0"
+      fi
+    done
+    export DOTFILES_UPDATE_BOOTSTRAP=1
+  fi
+  # Python may be a Mise shim. Resolving it must not trigger an installation
+  # or command-triggered upgrade before the status collector runs.
+  export MISE_OFFLINE=1 MISE_AUTO_INSTALL=false MISE_EXEC_AUTO_INSTALL=false
+  export MISE_NOT_FOUND_AUTO_INSTALL=false
+  local entry candidate keep
+  local -a retained candidates
+  candidates=("$PWD/node_modules/.bin" "$PWD/bun_modules/.bin" "$PWD/.bun/bin" "$PWD/.bin" "$PWD/bin")
+  for entry in "${path[@]}"; do
+    keep=1
+    for candidate in "${candidates[@]}"; do
+      [[ "${entry:A}" == "${candidate:A}" ]] && keep=0
+    done
+    (( keep )) && retained+=("$entry")
+  done
+  path=("${retained[@]}")
+  # A Mise shim also selects versions from the working directory. Resolve
+  # Python from home so an unrelated project's selector cannot override it.
+  builtin cd -- "$HOME" || exit 1
+fi
+exec python3 "$script" "$@"

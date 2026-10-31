@@ -88,8 +88,7 @@ MISE_OFFLINE=1 mise which bun
 MISE_OFFLINE=1 bun --version
 MISE_OFFLINE=1 git-slop --version
 MISE_OFFLINE=1 gh steward version --json
-tool-status
-tool-status --updates
+dotfiles status
 mise doctor
 ```
 

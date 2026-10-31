@@ -438,6 +438,41 @@ bun --version
         self.assertIn("npm:neon", result.stdout)
         self.assertIn("mise --cd ", (self.root / "command-log").read_text())
 
+    def test_update_launcher_uses_home_tools_and_restores_caller_mise_preferences(self):
+        self.install()
+        self.status_spies()
+        project = self.root / "Project [update] with spaces"
+        marker = self.root / "project-update-tool-ran"
+        project_bins = []
+        for directory in ("node_modules/.bin", "bun_modules/.bin", ".bun/bin", ".bin", "bin"):
+            for tool in ("python3", "mise", "brew"):
+                self.write(project / directory / tool, f"#!/bin/sh\ntouch '{marker}'\nexit 9\n", executable=True)
+            project_bins.append(str(project / directory))
+        spy_log = self.root / "update-python-environment"
+        self.env["DOTFILES_TEST_PYTHON_LOG"] = str(spy_log)
+        self.write(self.test_home / ".local/bin/python3", f'''#!/bin/sh
+printf '%s %s %s %s\\n' "$MISE_OFFLINE" "$MISE_AUTO_INSTALL" "$MISE_EXEC_AUTO_INSTALL" "$MISE_NOT_FOUND_AUTO_INSTALL" >> "$DOTFILES_TEST_PYTHON_LOG"
+exec {shlex.quote(sys.executable)} "$@"
+''', executable=True)
+        self.env["PATH"] = os.pathsep.join([*project_bins, str(self.test_home / ".local/bin"), self.env["PATH"]])
+        launcher = self.test_home / ".local/bin/dotfiles"
+        for offline in (None, "1"):
+            with self.subTest(offline=offline):
+                if offline is None:
+                    self.env.pop("MISE_OFFLINE", None)
+                else:
+                    self.env["MISE_OFFLINE"] = offline
+                self.env["MISE_AUTO_INSTALL"] = "custom-auto"
+                self.env["MISE_EXEC_AUTO_INSTALL"] = "custom-exec"
+                self.env.pop("MISE_NOT_FOUND_AUTO_INSTALL", None)
+                result = self.run_command([str(launcher), "update", "--dry-run"], cwd=project)
+                self.assertIn("brew upgrade --dry-run", result.stdout)
+                calls = (self.root / "command-log").read_text()
+                self.assertIn(f"mise-update-env={offline or 'unset'}|custom-auto|custom-exec|unset", calls)
+                self.assertIn(f"brew-cleanup=1|offline={offline or 'unset'}|cwd={self.test_home}", calls)
+                self.assertFalse(marker.exists())
+        self.assertTrue(all(line == "1 false false false" for line in spy_log.read_text().splitlines()))
+
     def test_gh_steward_extension_forwards_arguments_and_exit_status_to_mise(self):
         self.install()
         self.command_spies()
@@ -604,15 +639,16 @@ esac
         self.assertEqual(self.run_command([git, "config", "--get", "core.autocrlf"]).stdout.strip(), "input")
         self.assertNotIn("/Users/", (self.test_home / ".gitconfig").read_text())
 
-    def test_tool_status_is_explicit_and_updates_are_opt_in(self):
+    def test_dotfiles_status_is_explicit_and_checks_updates(self):
         self.install()
         self.status_spies()
-        result = self.shell('tool-status; print -- --updates--; tool-status --updates', flags="-di")
+        self.shell('(( ! $+functions[tool-status] && ! $+functions[print_tool_status] ))', flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("bun", result.stdout)
         calls = (self.root / "command-log").read_text().splitlines()
         self.assertEqual(sum("outdated" in line for line in calls), 2)
         invalid = self.run_command(
-            [shutil.which("zsh"), "-di", "-c", "tool-status --invalid"], check=False,
+            [shutil.which("zsh"), "-di", "-c", "dotfiles status --invalid"], check=False,
         )
         self.assertEqual(invalid.returncode, 2)
 
@@ -623,6 +659,9 @@ esac
             "vercel": 'printf "Vercel CLI 50.10.0\\n" >&2\n',
             "brew": '''case "$1" in
   --version) printf "Homebrew 7.0.7-103-ga57af19\\n" ;;
+  upgrade)
+    printf 'brew-cleanup=%s|offline=%s|cwd=%s\\n' "$HOMEBREW_NO_INSTALL_CLEANUP" "${MISE_OFFLINE-unset}" "$PWD" >> "$DOTFILES_TEST_COMMAND_LOG"
+    ;;
   outdated)
     if [ -n "${DOTFILES_TEST_UPDATE_GATE:-}" ]; then
       touch "$DOTFILES_TEST_UPDATE_STARTED"
@@ -659,6 +698,8 @@ printf '%s' "${DOTFILES_TEST_VERCEL_JSON:-}"
         self.write(self.test_home / ".local/bin/mise", "#!" + sys.executable + "\n" + r'''import json, os, sys
 with open(os.environ["DOTFILES_TEST_COMMAND_LOG"], "a") as output:
     output.write("mise " + " ".join(sys.argv[1:]) + "|offline=" + os.environ.get("MISE_OFFLINE", "") + "\n")
+    if "upgrade" in sys.argv:
+        output.write("mise-update-env=" + "|".join(os.environ.get(key, "unset") for key in ("MISE_OFFLINE", "MISE_AUTO_INSTALL", "MISE_EXEC_AUTO_INSTALL", "MISE_NOT_FOUND_AUTO_INSTALL")) + "\n")
 args = sys.argv[3:]
 if args == ["ls", "--current", "--json"]:
     assert os.environ["MISE_OFFLINE"] == "1"
@@ -679,6 +720,8 @@ elif args == ["outdated", "--global", "--json"]:
     print(json.dumps(result))
 elif args[:3] == ["upgrade", "--global", "--dry-run"]:
     print("Mise upgrade preview")
+elif args[:2] == ["upgrade", "--global"]:
+    print("Mise upgrade")
 else:
     sys.exit(9)
 ''', executable=True)
@@ -706,7 +749,7 @@ else:
     def test_update_check_reports_versions_and_notices_and_keeps_cache_private(self):
         self.install()
         cache = self.status_spies()
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("bun           v1.4.2", result.stdout)
         self.assertIn("vercel        v50.10.0 (update available: v50.11.0)", result.stdout)
         self.assertIn("(4 package updates available)", result.stdout)
@@ -728,13 +771,13 @@ else:
         self.env["DOTFILES_TEST_OUTDATED"] = brew_updates()
         # Compare numeric components; 50.9.9 is older than 50.10.0.
         self.env["DOTFILES_TEST_VERCEL_JSON"] = '{"version":"50.9.9"}'
-        current = self.shell("tool-status --updates", flags="-di")
+        current = self.shell("dotfiles status", flags="-di")
         self.assertIn("Homebrew      v7.0.7-103-ga57af19\n", current.stdout)
         self.assertIn("vercel        v50.10.0\n", current.stdout)
         self.assertNotIn("no update", current.stdout)
         self.env["DOTFILES_TEST_BREW_FAIL"] = "1"
         self.env["DOTFILES_TEST_CURL_FAIL"] = "1"
-        failed = self.shell("tool-status --updates", flags="-di")
+        failed = self.shell("dotfiles status", flags="-di")
         self.assertEqual(failed.stdout.count("(update check unavailable)"), 6)
         self.assertNotIn("no update", failed.stdout)
 
@@ -743,7 +786,7 @@ else:
         self.status_spies()
         marker = self.root / "must-not-execute"
         self.env["DOTFILES_TEST_VERCEL_JSON"] = json.dumps({"version": f"$(touch {marker})"})
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("vercel        v50.10.0 (update check unavailable)", result.stdout)
         self.assertFalse(marker.exists())
 
@@ -752,7 +795,7 @@ else:
         self.status_spies()
         self.env["DOTFILES_TEST_OUTDATED"] = brew_updates()
         self.env["DOTFILES_TEST_BREW_WARNING"] = "1"
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("Homebrew      v7.0.7-103-ga57af19 (update check unavailable)", result.stdout)
         self.assertNotIn("synthetic", result.stdout)
 
@@ -764,7 +807,7 @@ else:
         data["casks"] = [{"name": "docker-desktop", "installed_versions": ["4.93.0,123"],
                           "current_version": "4.94.0,456", "pinned": True}]
         self.env["DOTFILES_TEST_OUTDATED"] = json.dumps(data)
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("bun           v1.4.2", result.stdout)
         self.assertIn("(5 package updates available)", result.stdout)
         self.assertIn("poppler: 1.0.0 -> 2.0.0", result.stdout)
@@ -780,7 +823,7 @@ else:
         data["formulae"][1]["name"] = f"$(touch {marker})"
         for invalid in (json.dumps(data), "invalid json"):
             self.env["DOTFILES_TEST_OUTDATED"] = invalid
-            result = self.shell("tool-status --updates", flags="-di")
+            result = self.shell("dotfiles status", flags="-di")
             self.assertIn("Homebrew      v7.0.7-103-ga57af19 (update check unavailable)", result.stdout)
             self.assertNotIn("mise: 1.0.0", result.stdout)
         self.assertFalse(marker.exists())
@@ -791,7 +834,7 @@ else:
         marker = self.root / "global-cli-ran"
         for name in ("agent-browser", "turbo", "neon", "vercel"):
             self.write(self.test_home / ".local/bin" / name, f"#!/bin/sh\ntouch '{marker}'\nexit 9\n", executable=True)
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         calls = (self.root / "command-log").read_text()
         self.assertEqual(calls.count("outdated --global --json"), 1)
         self.assertNotIn("registry.npmjs.org", calls)
@@ -809,21 +852,106 @@ else:
         self.env["DOTFILES_TEST_VERCEL_JSON"] = '{"version":"15.0.0"}'
         marker = self.root / "tokei-ran"
         self.write(self.test_home / ".local/bin/tokei", f"#!/bin/sh\ntouch '{marker}'\n", executable=True)
-        result = self.shell("tool-status --updates", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("tokei         v14.0.0 (update available: v15.0.0)", result.stdout)
         self.assertFalse(marker.exists())
 
-    def test_missing_global_is_reported_without_fetch_and_manual_status_is_offline(self):
+    def test_missing_global_is_reported_without_running_a_tool(self):
         self.install()
         self.status_spies()
         data = json.loads(self.env["DOTFILES_TEST_MISE_INSTALLED"])
         del data["neon"]
         self.env["DOTFILES_TEST_MISE_INSTALLED"] = json.dumps(data)
-        result = self.shell("tool-status", flags="-di")
+        result = self.shell("dotfiles status", flags="-di")
         self.assertIn("neon          not installed or version unavailable (desired: 8)", result.stdout)
         self.assertNotIn("registry.npmjs.org", (self.root / "command-log").read_text())
-        self.shell("tool-status --updates", flags="-di")
         self.assertNotIn("https://registry.npmjs.org/neon/latest", (self.root / "command-log").read_text())
+
+    def test_status_launcher_excludes_project_bins_before_resolving_python(self):
+        self.install()
+        cache = self.status_spies()
+        project = self.root / "Project [status] with spaces"
+        marker = self.root / "project-command-ran"
+        for directory in ("node_modules/.bin", "bun_modules/.bin", ".bun/bin", ".bin", "bin"):
+            for tool in ("python3", "mise", "brew", "mkdir", "mktemp"):
+                self.write(project / directory / tool, f"#!/bin/sh\ntouch '{marker}'\nexit 9\n", executable=True)
+        project_bins = [str(project / directory) for directory in
+                        ("node_modules/.bin", "bun_modules/.bin", ".bun/bin", ".bin", "bin")]
+        self.env["PATH"] = os.pathsep.join([*project_bins, str(self.test_home / ".local/bin"), self.env["PATH"]])
+        self.enable_status_banner()
+        self.write(cache, "Tool status: stale startup banner\n")
+        result = self.run_command([str(self.test_home / ".local/bin/dotfiles"), "status"], cwd=project)
+        self.assertEqual(result.stdout.count("Tool status:"), 1)
+        self.assertNotIn("stale startup banner", result.stdout)
+        self.assertIn("vercel        v50.10.0 (update available: v50.11.0)", result.stdout)
+        self.assertEqual(cache.read_text(), result.stdout)
+        self.assertFalse(marker.exists())
+
+    def test_status_launcher_resolves_python_offline_without_implicit_install(self):
+        self.install()
+        self.status_spies()
+        spy_log = self.root / "python-environment"
+        self.env["DOTFILES_TEST_PYTHON_LOG"] = str(spy_log)
+        self.write(self.test_home / ".local/bin/python3", f'''#!/bin/sh
+printf '%s %s %s %s\\n' "$MISE_OFFLINE" "$MISE_AUTO_INSTALL" "$MISE_EXEC_AUTO_INSTALL" "$MISE_NOT_FOUND_AUTO_INSTALL" >> "$DOTFILES_TEST_PYTHON_LOG"
+exec {shlex.quote(sys.executable)} "$@"
+''', executable=True)
+        self.env["PATH"] = str(self.test_home / ".local/bin") + os.pathsep + self.env["PATH"]
+        self.run_command([str(self.test_home / ".local/bin/dotfiles"), "status"])
+        self.assertTrue(spy_log.exists())
+        self.assertTrue(all(line == "1 false false false" for line in spy_log.read_text().splitlines()))
+
+    def test_status_launcher_uses_home_python_when_project_pin_is_missing(self):
+        self.install()
+        self.status_spies()
+        mise = shutil.which("mise")
+        self.env["MISE_DATA_DIR"] = str(self.state / "data/mise")
+        self.env["MISE_CACHE_DIR"] = str(self.state / "mise-cache")
+        self.env["MISE_CONFIG_DIR"] = str(self.test_home / ".config/mise")
+        self.env["MISE_OFFLINE"] = "1"
+        self.env["MISE_AUTO_INSTALL"] = "false"
+        self.env["MISE_EXEC_AUTO_INSTALL"] = "false"
+        self.env["MISE_NOT_FOUND_AUTO_INSTALL"] = "false"
+        self.env["__MISE_BIN"] = mise
+        runtime = self.root / "home-python"
+        (runtime / "bin").mkdir(parents=True)
+        for name in ("python", "python3"):
+            (runtime / "bin" / name).symlink_to(sys.executable)
+        self.run_command([mise, "link", "python@3.15.2", str(runtime)])
+        self.run_command([mise, "reshim"])
+        project = self.root / "project-with-uninstalled-python"
+        self.write(project / "mise.toml", '[tools]\npython = "99.99.99"\n')
+        shims = self.state / "data/mise/shims"
+        self.assertTrue((shims / "python3").exists())
+        self.env["PATH"] = os.pathsep.join([str(shims), str(self.test_home / ".local/bin"), self.env["PATH"]])
+        unavailable = self.run_command([str(shims / "python3"), "--version"], cwd=project, check=False)
+        self.assertNotEqual(unavailable.returncode, 0)
+        self.assertIn("99.99.99", unavailable.stderr)
+        result = self.run_command([str(self.test_home / ".local/bin/dotfiles"), "status"], cwd=project)
+        self.assertIn("vercel        v50.10.0", result.stdout)
+        self.assertNotIn("99.99.99", result.stderr)
+        update = self.run_command([str(self.test_home / ".local/bin/dotfiles"), "update", "--dry-run"], cwd=project)
+        self.assertIn("brew upgrade --dry-run", update.stdout)
+        self.assertNotIn("99.99.99", update.stderr)
+
+    def test_status_reports_shared_lock_contention(self):
+        self.install()
+        cache = self.status_spies()
+        self.write(cache, "previous snapshot\n")
+        lock = cache.parent / "refresh.lock"
+        self.write(lock, "")
+        holder = subprocess.Popen(
+            ["/bin/zsh", "-dfc", 'zmodload zsh/system && zsystem flock -f held "$1" && print ready && read -r', "lock-holder", str(lock)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=self.env,
+        )
+        try:
+            self.assertEqual(holder.stdout.readline().strip(), "ready")
+            result = self.run_command([str(self.test_home / ".local/bin/dotfiles"), "status"], check=False)
+            self.assertEqual(result.returncode, 75)
+            self.assertIn("another check may already be running", result.stderr)
+            self.assertEqual(cache.read_text(), "previous snapshot\n")
+        finally:
+            holder.communicate("\n", timeout=5)
 
     def test_shared_status_cache_uses_global_tools_and_preserves_project_paths(self):
         self.install()
@@ -835,7 +963,7 @@ else:
         self.env["DOTFILES_TEST_PROJECT"] = str(project)
         result = self.shell('''
 cd "$DOTFILES_TEST_PROJECT"
-tool-status --updates
+dotfiles status
 [[ "$path[1]" == "$DOTFILES_TEST_PROJECT/node_modules/.bin" ]]
 ''', flags="-di")
         self.assertIn("v1.4.2", result.stdout)
@@ -845,7 +973,7 @@ tool-status --updates
     def test_fresh_cached_banner_runs_no_commands_and_prints_once(self):
         self.install()
         cache = self.status_spies()
-        self.shell("tool-status --updates", flags="-di")
+        self.shell("dotfiles status", flags="-di")
         self.enable_status_banner()
         marker = self.root / "must-not-execute"
         # Cached text must not be sourced as shell code.
@@ -876,7 +1004,7 @@ tool-status --updates
     def test_stale_banner_is_nonblocking_atomic_and_deduplicates_workers(self):
         self.install()
         cache = self.status_spies()
-        original = self.shell("tool-status --updates", flags="-di").stdout
+        original = self.shell("dotfiles status", flags="-di").stdout
         self.enable_status_banner()
         os.utime(cache, (0, 0))
         gate = self.root / "release-update"
@@ -937,7 +1065,7 @@ tool-status --updates
     def test_refresh_animation_preserves_typed_input_and_prompt_then_cleans_up(self):
         self.install()
         cache = self.status_spies()
-        self.shell("tool-status --updates", flags="-di")
+        self.shell("dotfiles status", flags="-di")
         self.enable_status_banner()
         os.utime(cache, (0, 0))
         gate = self.root / "release-animation"

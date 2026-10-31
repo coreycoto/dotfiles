@@ -11,10 +11,12 @@ dotfiles. Read the reviewed checkout's `docs/tool-ownership.md` and
 consumer configuration. Do not impose the Mac setup on a cloud development VM.
 
 The dotfiles own global requests in `~/.config/mise/config.toml`.
+`dotfiles status` checks Homebrew and Mise for updates without installing them.
 `dotfiles install --dry-run` previews installation, and `dotfiles update --dry-run`
-previews upgrades. Run `dotfiles install` or `dotfiles update` only when the
-corresponding operation is authorized. Selected
-global CLIs opt into command-triggered update checks every six hours; project
+previews Mise and Homebrew upgrades. `dotfiles update` covers eligible installed
+Homebrew formulae and casks as well as the selected Mise tools. Run either
+command only when the corresponding operation is authorized. Selected global
+CLIs opt into command-triggered update checks every six hours; project
 pins still win. Inspect current configuration before relying on that schedule.
 Keep status checks offline with automatic installation disabled, and preserve
 existing recovery installations unless their removal is separately requested.

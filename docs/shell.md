@@ -25,12 +25,13 @@
   and existing customizations.
 - The `dotenv` plugin is opt-in through `DOTFILES_ENABLE_DOTENV=1` in the early
   local options file because it loads project environment files.
-- `tool-status` displays Homebrew and Mise-selected versions from metadata.
-  `tool-status --updates` checks available updates without installing anything.
-  Both paths suppress shim-triggered upgrades; the startup banner remains quiet
-  and offline except for its detached metadata refresh.
-- `dotfiles install` installs the authored global selection, and `dotfiles update`
-  upgrades within existing requests. Add `--dry-run` to preview either command.
+- `dotfiles status` checks Homebrew and Mise-selected versions and available
+  updates without installing anything. It refreshes the startup banner cache.
+  The startup banner remains quiet and offline except for its detached metadata
+  refresh.
+- `dotfiles install` installs the authored Mise selection. `dotfiles update`
+  upgrades that selection within existing requests and upgrades Homebrew
+  formulae and casks. Add `--dry-run` to preview either command.
   `dotfiles check` runs the checkout's validation suite in a disposable home.
   `dotfiles --help` lists the commands.
 - Existing history location and settings are retained; history is never
@@ -48,7 +49,7 @@ add this preference to `~/.config/zsh/options.local.zsh`:
 DOTFILES_TOOL_STATUS_ON_STARTUP=1
 ```
 
-Run `tool-status --updates` once to populate the cache. New terminals display
+Run `dotfiles status` once to populate the cache. New terminals display
 that cached banner immediately. Results older than six hours refresh in the
 background. In an interactive terminal, a small `⠋ tools` animation appears
 below the editing line, becomes `✓ tools` when the cache is refreshed (or

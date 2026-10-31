@@ -43,9 +43,9 @@ class DotfilesCliTests(unittest.TestCase):
         for args in ((), ("--help",)):
             result = self.run_cli(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
-            for command in ("install", "update", "check"):
+            for command in ("install", "update", "status", "check"):
                 self.assertIn(command, result.stdout)
-        for args in (("unknown",), ("check", "--dry-run"), ("update", "--apply")):
+        for args in (("unknown",), ("check", "--dry-run"), ("update", "--apply"), ("status", "--updates")):
             self.assertEqual(self.run_cli(*args).returncode, 2)
         self.assertFalse(self.log.exists())
 

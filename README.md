@@ -26,8 +26,10 @@ Use [recovery](docs/recovery.md) to restore a selected backup.
 
 After applying the dotfiles, `dotfiles --help` shows the available commands.
 Use `dotfiles install` for the selected Mise tools, `dotfiles update` to upgrade
-them within their configured requests, and `dotfiles check` to validate this
-checkout. Add `--dry-run` to install or update to preview the operation.
+them within their configured requests and upgrade Homebrew packages, and
+`dotfiles check` to validate this checkout. Use `dotfiles status` to check
+Homebrew and Mise for available updates and refresh the startup banner. Add
+`--dry-run` to install or update to preview the operation.
 These commands use the checkout recorded when the launcher was applied;
 `update` does not pull the repository or apply home configuration. `check`
 runs the full development gate, including a disposable-home installation, and

@@ -163,21 +163,29 @@ Qualify `mo --version`, help, and a bounded read-only analysis before activation
 do not use Mole's self-update command on a Mise-managed installation.
 
 ```sh
-dotfiles update --dry-run # Mise's actual upgrade dry run
-dotfiles update           # upgrade within existing global requests
+dotfiles update --dry-run # preview Mise and Homebrew upgrades
+dotfiles update           # upgrade Mise and Homebrew packages
 mise outdated --global
 mise doctor
 ```
 
-The helper never passes `--bump` or rewrites authored requests. Update a version
-range deliberately in the source, validate it, and apply the config separately.
-Use `dotfiles` for the authored Mise selection. Normal chezmoi
+The update command checks that the live Mise configuration matches the reviewed
+source, then upgrades the selected Mise tools and Homebrew packages in that order.
+It stops if a step fails; an earlier step may already have succeeded. It never
+passes `--bump` or rewrites authored requests. Update a version range deliberately
+in the source, validate it, and apply the config separately.
+
+Homebrew upgrades all eligible installed formulae and casks, including packages
+outside the Mise selection; its usual pinned and self-updating cask exclusions
+apply. Homebrew may upgrade dependents, ask for input, or quit running apps during
+cask upgrades. Automatic Homebrew cleanup is disabled for this command. Run
+`dotfiles status` afterwards to refresh the startup banner. Normal chezmoi
 application preserves unmanaged files and does not uninstall software.
 
-`tool-status` reads Mise's installed metadata with `MISE_OFFLINE=1`, never by
-running opted-in tools. `tool-status --updates` also reads `mise outdated
---global --json` and Homebrew metadata without installing anything. Missing
-versions and failed checks are explicit. The opt-in startup banner keeps its
+`dotfiles status` reads Mise's installed metadata with `MISE_OFFLINE=1`, never by
+running opted-in tools. It also reads `mise outdated --global --json` and
+Homebrew metadata without installing anything. Missing versions and failed
+checks are explicit. The opt-in startup banner keeps its
 six-hour private cache, asynchronous refresh, shared lock and quiet default.
 Its Python shim runs offline, so even a future Python update opt-in cannot make
 status collection install software. Optional shell integration must also run
