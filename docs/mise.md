@@ -8,6 +8,12 @@ release delay; Node/Python/Rust defaults and exact project selectors remain fixe
 Applying dotfiles and installing tools are explicit operations; no chezmoi hook
 or shell startup installs software.
 
+Managed Mise settings enable Node's standard `.node-version` and `.nvmrc` files,
+so those project selectors override the global Node default. Leaving the project
+restores the global selection. A requested project version that is not installed
+fails without installing it or falling back to another version. This uses Mise's
+[idiomatic version-file setting](https://mise.jdx.dev/configuration/settings.html#idiomatic_version_file_enable_tools).
+
 ## Bootstrap the official binary
 
 Follow [upstream installation](https://mise.jdx.dev/installing-mise.html#mise-run).

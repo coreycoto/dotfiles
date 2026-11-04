@@ -44,6 +44,8 @@ turbo = { version = "2", auto_update = "6h" }
 "github:coreycoto/gh-steward" = { version = "0.6", auto_update = "6h", bin = "gh-steward" }
 
 [settings]
+# Honor project .node-version and .nvmrc selectors above the global Node default.
+idiomatic_version_file_enable_tools = ["node"]
 # Resolving a command must never install missing software implicitly.
 auto_install = false
 exec_auto_install = false
