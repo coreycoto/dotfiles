@@ -313,14 +313,40 @@ node --version
     def test_missing_project_runtime_fails_without_installing_or_falling_back(self):
         self.install()
         self.mise_node_fixture()
-        project = self.root / "missing-runtime"
-        self.write(project / "mise.local.toml", '[tools]\nnode = "99.99.99"\n')
-        before = sorted(str(path) for path in (self.state / "data/mise/installs/node").iterdir())
-        result = self.run_command([shutil.which("zsh"), "-di", "-c", "node --version"], cwd=project, check=False)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, "")
-        self.assertIn("99.99.99", result.stderr)
-        self.assertEqual(before, sorted(str(path) for path in (self.state / "data/mise/installs/node").iterdir()))
+        for selector, content in (
+            ("mise.local.toml", '[tools]\nnode = "99.99.99"\n'),
+            (".node-version", "99.99.99\n"),
+            (".nvmrc", "99.99.99\n"),
+        ):
+            with self.subTest(selector=selector):
+                project = self.root / f"missing-runtime-{selector}"
+                self.write(project / selector, content)
+                before = sorted(str(path) for path in (self.state / "data/mise/installs/node").iterdir())
+                result = self.run_command([shutil.which("zsh"), "-di", "-c", "node --version"], cwd=project, check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("99.99.99", result.stderr)
+                self.assertEqual(before, sorted(str(path) for path in (self.state / "data/mise/installs/node").iterdir()))
+
+    def test_mise_honors_standard_node_version_files_and_restores_global_default(self):
+        self.install()
+        self.mise_node_fixture()
+        for selector, content in ((".node-version", "22.23.3\n"), (".nvmrc", "v22.23.3\n")):
+            with self.subTest(selector=selector):
+                project = self.root / f"Project [{selector}] with spaces"
+                selected = self.write(project / selector, content)
+                before = selected.read_bytes()
+                self.env["DOTFILES_TEST_PROJECT"] = str(project)
+                result = self.shell('''
+node --version
+cd "$DOTFILES_TEST_PROJECT"
+node --version
+cd "$HOME"
+node --version
+''', flags="-di")
+                self.assertEqual(result.stdout.splitlines(), ["v26.13.0", "v22.23.3", "v26.13.0"])
+                self.assertEqual(result.stderr, "")
+                self.assertEqual(selected.read_bytes(), before)
 
     def test_global_bun_stays_in_major_one_and_project_exact_pin_wins(self):
         self.install()
