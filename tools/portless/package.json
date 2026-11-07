@@ -1,0 +1,7 @@
+{
+  "name": "dotfiles-portless-service",
+  "private": true,
+  "dependencies": {
+    "portless": "0.16.0"
+  }
+}

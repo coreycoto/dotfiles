@@ -1,51 +1,102 @@
-# Portless development setup
+# Portless development and macOS service
 
-Portless belongs to each maintained monorepo's development dependencies. The
-project package manager installs it, and the project manifest and lockfile select
-its version. Use the installed project binary or the project's reviewed scripts.
-There is no Homebrew or Bun-global Portless selection in these dotfiles.
+Projects own their Portless dependency, lockfile, routes, application commands,
+and Compose configuration. Use the reviewed project binary for everyday work.
+The machine's optional startup proxy has a different lifetime: it must not refer
+to a project checkout or a versioned Homebrew Cellar directory.
 
-This assessment selects documentation only: no portable user preferences are
-needed. The reviewed local state entries were generated routes, logs,
-certificates, and trust/process markers. Application names, launch commands,
-ports, allowed development origins,
-proxy rewrites, HTTPS requirements, and any `portless.json` or `package.json`
-`portless` configuration belong in the owning project. Machine-specific choices
-can be supplied explicitly for a session. Dotfiles do not export `PORTLESS_*`,
-install a service, or start a proxy during shell startup or chezmoi application.
+Dotfiles owns the explicit acquisition and repair procedure for that service's
+durable runtime. The exact package selection and registry integrity live in
+[`tools/portless`](../tools/portless/package.json) and its Bun lockfile; it is
+independent of project updates and ordinary `dotfiles install/update`. No
+Portless software, launchd service, CA trust, or proxy is installed or started
+by shell startup or chezmoi application. The installed package, private state,
+certificates, logs and launchd plist stay machine-local and outside the manifest.
+See the [selected upstream guide](https://github.com/vercel-labs/portless/blob/v0.16.0/README.md).
 
-The commands below were checked against Portless 0.13.1, the version resolved by
-an existing maintained monorepo. This is an evaluated version, not a new pin for
-every project. Read the installed version's help before changing its setup.
-See the [versioned upstream guide](https://github.com/vercel-labs/portless/blob/551434f0e2a688c1c7eccfead411eb2cdd3109c9/README.md)
-and [package requirements](https://github.com/vercel-labs/portless/blob/551434f0e2a688c1c7eccfead411eb2cdd3109c9/packages/portless/package.json).
+## Repair an existing startup service explicitly
 
-## Install and update explicitly
-
-Read the project's runtime selectors, package manager, dependency version, and
-development instructions first. Portless 0.13.1 requires Node.js 24 or later;
-select an installed mise runtime as described in [tool ownership](tool-ownership.md).
-From a Bun-owned project, for example:
+Run from the reviewed dotfiles checkout as the owning user, never with sudo:
 
 ```sh
-cd /path/to/monorepo
-node --version
-bun install --frozen-lockfile
-./node_modules/.bin/portless --version
-./node_modules/.bin/portless --help
+python3 scripts/portless-service.py install-runtime
+python3 scripts/portless-service.py prepare --output /tmp/portless-service-review
 ```
 
-Use the equivalent locked installation for another project package manager.
-If Portless is missing, add a reviewed development dependency in that project
-and commit its manifest and lockfile together. A global install, `bunx`, or
-`npx` must not silently supply a different version. Updates use the project's
-normal dependency review, followed by its development smoke checks. Reinstall
-from the prior reviewed manifest and lockfile to roll back a package update.
-Removing a package does not stop an existing proxy or remove CA trust.
+`install-runtime` uses Bun's frozen lockfile and disables lifecycle scripts. It
+installs the self-contained package at `~/.local/share/portless/<version>` with
+`dist/cli.js` directly beneath it. It validates every published file against the reviewed SHA-256/size inventory
+and compares the locked download before accepting an existing tree. Changed,
+unowned, externally writable or linked content is refused without replacement.
+The known nonexecutable Atelier repair marker is preserved only when its
+repository, purpose, version, target and complete file inventory agree; other
+extra files are refused. Download staging is removed on failure. Installation does not
+start the proxy, trust certificates, change a service, or alter project dependencies.
+
+`prepare` reads the existing `/Library/LaunchDaemons/sh.portless.proxy.plist`,
+checks its label, foreground command and owning user's home, and stages a private
+backup, replacement plist and hash receipt. It changes only the Node and Portless
+entrypoint arguments. Existing proxy flags, state directory, log path, UID/GID,
+CA and trust remain unchanged. Before executing the CLI, it validates every package file against the reviewed
+integrity inventory. It then checks the package version and Mise's installed Node major alias against the reviewed global Node pin. Project
+selectors and PATH cannot redirect that Node selection. A custom `MISE_DATA_DIR`
+must describe the intended existing installation. The output directory must not
+already exist. Staging does not apply or restart anything.
+
+Review the staged plist locally; it contains machine paths and may contain
+private environment overrides, so do not publish it. Check that only the first
+two `ProgramArguments` changed and that the original file's SHA-256 still
+matches `receipt.json` immediately before application. Preserve the backup
+until the replacement has been verified. Administrator application is a separate
+explicit operation, coordinated with other projects using the shared proxy:
+
+```sh
+plutil -lint /tmp/portless-service-review/candidate.plist
+# After reviewing the paths, preserved settings, and unchanged original hash:
+sudo launchctl bootout system/sh.portless.proxy
+sudo install -o root -g wheel -m 644 /tmp/portless-service-review/candidate.plist \
+  /Library/LaunchDaemons/sh.portless.proxy.plist
+sudo launchctl bootstrap system /Library/LaunchDaemons/sh.portless.proxy.plist
+```
+
+A missing running job can make `bootout` fail; establish that it is absent
+before continuing. If bootstrap fails, retain its error and restore the reviewed
+`original.plist` with the same `install` and `bootstrap` steps. Never run broad
+`portless clean` as part of service repair: it can retire shared CA trust and routes.
+
+Use `launchctl print system/sh.portless.proxy` to check process state, then
+verify an existing project's named HTTPS URL and certificate issuer in a browser.
+A loaded plist alone does not prove routing or trust. Check the selected runtime's
+`service status` with the same Node, HOME and state directory. Keep diagnostics
+local; do not copy logs, certificates, keys or plist receipts into Git.
+
+Mise's major alias survives minor Node upgrades, unlike a Cellar version path.
+Retiring that Node major, changing `MISE_DATA_DIR`, or upgrading the locked Portless
+package requires explicit reinstallation, preparation, review and service restart.
+A package upgrade must refresh and qualify its locked package and SHA/size inventory together.
+There is no automatic major-version repair or automatic service upgrade. Keep
+the prior runtime and Node installation until the new service is qualified.
+A root launchdaemon executes user-owned runtime code, as Portless's own service
+installer does; keep those files private to the owning user and trusted administrators.
+
+This command repairs an existing macOS service only. For first installation,
+review the selected runtime's `service install --help`, use that durable runtime
+with the selected Mise Node, then run `prepare` to normalize the stable Node alias.
+First installation can create/trust certificates and request administrator access.
+`--unprivileged` changes proxy binding/elevation behavior; it does not convert
+a root launchdaemon into a per-user service. A service migration needs its own review.
+
+## Project installation
+
+Read the project's package manager, runtime selectors and development instructions.
+For a Bun-owned project, use `bun install --frozen-lockfile` and its installed
+`./node_modules/.bin/portless`. Never silently supply another version through an
+on-demand package download. Coordinate project/service version compatibility: the
+shared state format is pre-1.0 and can change between releases.
 
 ## Localhost and normal development
 
-Portless 0.13.1 defaults to HTTPS on port 443, generates local certificates, and
+Portless defaults to HTTPS on port 443, generates local certificates, and
 attempts to trust its CA. Running an application can auto-start that proxy.
 Its default also synchronizes route names into `/etc/hosts`. Review these
 effects before the first development run; dependency installation alone is
@@ -81,10 +132,8 @@ Safari may require an explicit hosts update. If that is needed, review and run
 and may request administrator privileges. Keep auto-sync disabled for trials.
 Custom suffixes and framework routing requirements belong in the project.
 
-`--lan` controls discovery and naming. In the evaluated 0.13.1 source, the
-[proxy listener](https://github.com/vercel-labs/portless/blob/551434f0e2a688c1c7eccfead411eb2cdd3109c9/packages/portless/src/cli.ts#L573)
-does not specify a loopback bind address, so omitting `--lan` does not establish
-loopback-only exposure. Follow the project's network policy; LAN discovery,
+`--lan` controls discovery and naming. Omitting `--lan` does not by itself establish loopback-only exposure.
+Read the selected version's listener and `--unprivileged` behavior before choosing a network policy. Follow the project's network policy; LAN discovery,
 Tailscale sharing, and public tunnels require their own explicit setup.
 
 ## HTTPS and certificate trust
@@ -116,95 +165,24 @@ Keep those paths and material outside this repository. Project documentation
 owns any explicit `NODE_EXTRA_CA_CERTS` configuration for clients launched
 outside Portless; never disable certificate verification to make HTTPS work.
 
-OS startup service installation is a separate choice. If deliberately selected,
-review `./node_modules/.bin/portless service --help` first. `service install`
-can generate/trust certificates and create a root-owned macOS launchd service.
-Record its Node/binary paths, state directory, and options locally; reinstall
-deliberately if a project dependency or mise path changes. `service status`
-inspects it; `service uninstall` stops and removes it, but certificate retirement
-still needs the procedure below. Dotfiles do not install this service.
+## Disposable validation and retirement
 
-## Disposable validation
+`MISE_OFFLINE=1 ./scripts/check` exercises runtime installation with synthetic
+packages, refusal of changed/symlink trees, failure cleanup, and preparation
+against a disposable home and synthetic plist. It also checks the complete
+chezmoi manifest and repeated application. These checks never start a proxy or
+modify launchd, trust or the real home. A locked package acquisition and
+help/version check can additionally run in a disposable home before activation.
+Host routing, restart and browser trust remain explicit activation checks.
 
-Use an installed project binary, a fresh state directory, and an unused high
-port for a trial. Keep the following exports inside a subshell, and clear any
-inherited LAN IP or sharing choices:
+For ordinary shutdown, coordinate other projects before stopping the shared proxy.
+For complete retirement, inspect the selected version's `service uninstall` and
+`clean --help` first. Service removal and CA retirement are separate operations.
+`clean` may remove shared routes, state and certificates from multiple locations
+and keychains; it is unsuitable for deleting one trial. Identify the local CA's
+SHA-256 fingerprint before selective trust removal and verify both login and
+System keychains. Keep its public certificate until trust retirement is verified;
+deleting a state directory alone does not revoke trust.
 
-```sh
-(
-  set -eu
-  umask 077
-  trial_dir=$(mktemp -d)
-  export PORTLESS_STATE_DIR="$trial_dir/state" PORTLESS_PORT=1355
-  export PORTLESS_HTTPS=0 PORTLESS_SYNC_HOSTS=0 PORTLESS_LAN=0
-  export PORTLESS_TLD=localhost PORTLESS_WILDCARD=0
-  export PORTLESS_TAILSCALE=0 PORTLESS_FUNNEL=0
-  unset PORTLESS_LAN_IP PORTLESS
-  printf 'Trial directory: %s\n' "$trial_dir"
-  ./node_modules/.bin/portless --version
-  ./node_modules/.bin/portless --help
-  PORTLESS=0 ./node_modules/.bin/portless run node -e \
-    'console.log("Portless bypass works")'
-  # Optional HTTP trial: run in the foreground and stop with Ctrl-C.
-  ./node_modules/.bin/portless proxy start --no-tls --port "$PORTLESS_PORT" --foreground
-)
-```
-
-The version/help/bypass checks do not create proxy state. The optional proxy
-creates only trial state. A second terminal can run a synthetic app using the
-same explicit environment and state directory, inspect the project binary's
-`list` output, stop the app, and then run its `proxy stop` with that same
-environment. Verify that the trial proxy has stopped before deleting only the
-printed trial directory. Do not run `portless clean` to remove a disposable
-trial: its scope extends beyond `PORTLESS_STATE_DIR`.
-
-The 0.13.1 package was verified against the existing project lockfile's integrity
-and exercised with Node 24.21.0: help/version, bypass, an isolated HTTP proxy,
-synthetic application routing, route removal on exit, and explicit proxy stop.
-The trial generated no certificates or trust/service actions and left the hosts
-file unchanged. Browser HTTPS trust and OS startup service installation remain
-manual onboarding checks.
-
-## Shutdown, untrust, and retirement
-
-For ordinary shutdown, stop the project's development command and run the
-installed project's `portless proxy stop` only when other projects no longer
-need that shared proxy. To bypass it for a development run, use the project's
-documented direct script or `PORTLESS=0 bun run dev` when its scripts honor that
-setting. Restarting an application can restart the proxy.
-
-For complete retirement, stop all dependent projects, inspect
-`./node_modules/.bin/portless clean --help`, and deliberately run
-`./node_modules/.bin/portless clean` while the binary is still installed.
-In 0.13.1, this stops the proxy, uninstalls a startup service, removes CA trust,
-removes known generated state from `~/.portless`, legacy `/tmp/portless`, and
-the selected custom state directory, and cleans the Portless hosts block.
-It may request sudo. On macOS its CA removal can delete multiple certificates
-named `portless Local CA` from login and System keychains, so it is unsuitable
-for retiring only one of several independent Portless setups. Custom certificate
-files supplied with `--cert` and `--key` are retained.
-See the versioned [cleanup scope](https://github.com/vercel-labs/portless/blob/551434f0e2a688c1c7eccfead411eb2cdd3109c9/packages/portless/src/clean-utils.ts)
-and [macOS CA removal](https://github.com/vercel-labs/portless/blob/551434f0e2a688c1c7eccfead411eb2cdd3109c9/packages/portless/src/certs.ts#L971).
-
-For selective untrust, identify the local CA by its SHA-256 fingerprint before
-changing state:
-
-```sh
-openssl x509 -in /path/to/selected/state/ca.pem -noout -fingerprint -sha256
-```
-
-Use Keychain Access to remove trust and delete only the matching CA in the
-keychain where it was installed. After manual removal, remove that state
-directory's generated `ca.trusted` marker so Portless does not use stale cached
-trust. Keep the public CA certificate until OS trust removal is verified; never
-delete a directory first and assume its CA is untrusted. Check both login and
-System keychains and the hosts block after retirement. If cleanup reports a
-trust-removal error, resolve it explicitly in Keychain Access. A successful exit
-alone is insufficient because cleanup can continue after an untrust warning.
-Then remove the development dependency through the owning project's review.
-
-`~/.portless` and custom state directories stay unmanaged. Never import their
-routes, logs, PID/process state, persisted proxy markers, host certificates,
-CA/server private keys, or generated CA/server certificates into dotfiles.
-Do not copy the entire directory, including for fixtures or backups in Git.
-Every Mac creates and trusts its own CA only during explicit HTTPS onboarding.
+Generated `~/.portless`, custom state directories, installation trees and repair
+backups stay unmanaged. Each machine explicitly generates and trusts its own CA.

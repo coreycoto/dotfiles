@@ -20,7 +20,7 @@ machine state during repeated application.
 | uv configuration | Manage interpreter ownership policy; preserve existing cached Python and virtual environments |
 | Global CLIs | Mise owns installations and version requests; use `dotfiles` for explicit maintenance; do not import generated installations |
 | Project version selectors | Project source remains authoritative; private machine-local mappings stay outside this repo |
-| Portless | Project-owned installation and [documentation only](portless.md); no portable user preferences selected; exclude all generated proxy state and certificates |
+| Portless | Project-owned CLIs; a separate locked service runtime and [explicit repair procedure](portless.md). No automatic service installation; exclude generated proxy state, certificates and installation trees |
 | GnuPG preferences | [Default preferences and local use](gnupg.md); no managed `gpg.conf` or `gpg-agent.conf`; keys, keyrings, trust, sockets, and backups remain local |
 | SwiftPM package collections | [Toolchain and collection guidance](swiftpm.md); retain local source selections and tool-generated compatibility symlinks; do not import cache, credentials, or security state |
 | Rustup and Cargo | Mise owns isolated homes; [toolchain and local configuration guidance](rust.md) preserves other installations and authored settings |
