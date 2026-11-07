@@ -22,3 +22,6 @@ dot_vscode-shared/
 dot_zcompdump*
 dot_zsh_history
 dot_zsh_sessions/
+
+# Locked service dependencies are installed only in explicit local runtime trees.
+node_modules/

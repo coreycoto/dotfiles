@@ -22,6 +22,7 @@
 | SSH client and inherited agent | macOS / existing host installation | [Portable config and local agent selection](ssh.md) |
 | Oh My Zsh | Explicit `scripts/oh-my-zsh.py` Git installation | Reviewed commit in `tools/oh-my-zsh.json`; [update and rollback](oh-my-zsh.md) |
 | TypeScript, tsx, project Vercel/Wrangler/Turbo, Portless | Project package manager | Project manifest and lockfile; [Portless onboarding](portless.md) |
+| Optional Portless startup service runtime | Explicit Bun frozen installation from `tools/portless` | Separate exact package pin; path-only service repair and restart are explicit |
 | .NET SDKs | Existing host SDK installation | Project `global.json`, including roll-forward policy |
 | Python dependencies and virtual environments | uv / project tooling | Project manifest and lockfile; installed Mise interpreter |
 

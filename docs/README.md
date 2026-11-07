@@ -19,6 +19,6 @@ or follow an application's own recovery procedure.
 | [Agent configuration](agent-configuration.md) | Preferences, instructions, public catalogs and private local sources |
 | [Developer CLIs](developer-cli-tools.md) | Tool selection and optional shell integration |
 | [Agent tool skills](agent-tool-skills.md) | Authored skill distribution and maintenance |
-| [Portless](portless.md) | Project-owned local development and HTTPS setup |
+| [Portless](portless.md) | Project development, durable startup-service repair and HTTPS setup |
 | [Inventory](inventory.md) | Managed-file scope, manifest contract and local-state boundaries |
 | [Publication](publication.md) | Checks, source review and qualification limits |

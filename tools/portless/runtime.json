@@ -1,0 +1,33 @@
+{
+  "version": "0.16.0",
+  "files": {
+    "README.md": {
+      "bytes": 34852,
+      "sha256": "c9041c837015fb05435567b3dd80429758418a85a703903a70449e4db6849b45"
+    },
+    "dist/chunk-KPJDIJBP.js": {
+      "bytes": 206447,
+      "sha256": "426aaaf1ca9f6ef4dd394dec5d76cb1c8117c6763bf0824ca88c5ca8967023fc"
+    },
+    "dist/cli.d.ts": {
+      "bytes": 20,
+      "sha256": "a59c47872b71f12589942892464e764c0db350c20b72228645615cc36e0a0725"
+    },
+    "dist/cli.js": {
+      "bytes": 347850,
+      "sha256": "385b4fe657fd58ea61ab68ad03acede5a8daef3acc7df873a9f8aebfe8a430fd"
+    },
+    "dist/index.d.ts": {
+      "bytes": 13186,
+      "sha256": "3d1d767eb6ce477389c6caadd76b7254fed72e729960f05c090a631632636f73"
+    },
+    "dist/index.js": {
+      "bytes": 1091,
+      "sha256": "0d926e4cdcfae824703780716a60e874ff7e2b6086c53e6968c06343c3cc5317"
+    },
+    "package.json": {
+      "bytes": 1376,
+      "sha256": "68d6f7d6e7508f8cf609c827619830d389808864c080ac62ba9a06fdfbb90d05"
+    }
+  }
+}
