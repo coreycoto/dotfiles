@@ -32,6 +32,8 @@
 - `dotfiles install` installs the authored Mise selection. `dotfiles update`
   upgrades that selection within existing requests and upgrades Homebrew
   formulae and casks. Add `--dry-run` to preview either command.
+  `dotfiles prune TOOL...` previews unused Mise versions; `--apply` removes
+  candidates after the project and rollback review in [tool ownership](tool-ownership.md).
   `dotfiles check` runs the checkout's validation suite in a disposable home.
   `dotfiles --help` lists the commands.
 - Existing history location and settings are retained; history is never

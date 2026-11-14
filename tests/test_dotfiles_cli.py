@@ -27,6 +27,7 @@ class DotfilesCliTests(unittest.TestCase):
             'Path(os.environ["TEST_LOG"]).write_text(json.dumps(sys.argv[1:]))\n'
             'sys.exit(int(os.environ.get("TEST_EXIT", "0")))\n'
         )
+        shutil.copyfile(scripts / "mise-tools.py", scripts / "mise-prune.py")
         check = scripts / "check"
         check.write_text('#!/bin/sh\npwd > "$TEST_LOG"\nexit "${TEST_EXIT:-0}"\n')
         check.chmod(0o755)
@@ -43,9 +44,9 @@ class DotfilesCliTests(unittest.TestCase):
         for args in ((), ("--help",)):
             result = self.run_cli(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
-            for command in ("install", "update", "status", "check"):
+            for command in ("install", "update", "prune", "status", "check"):
                 self.assertIn(command, result.stdout)
-        for args in (("unknown",), ("check", "--dry-run"), ("update", "--apply"), ("status", "--updates")):
+        for args in (("unknown",), ("prune",), ("check", "--dry-run"), ("update", "--apply"), ("status", "--updates")):
             self.assertEqual(self.run_cli(*args).returncode, 2)
         self.assertFalse(self.log.exists())
 
@@ -55,6 +56,8 @@ class DotfilesCliTests(unittest.TestCase):
             (("install", "--dry-run"), []),
             (("update",), ["--update", "--apply"]),
             (("update", "--dry-run"), ["--update"]),
+            (("prune", "vercel", "npm:neon"), ["vercel", "npm:neon"]),
+            (("prune", "--apply", "vercel"), ["--apply", "vercel"]),
         ):
             with self.subTest(args=args):
                 result = self.run_cli(*args, exit_code="7")

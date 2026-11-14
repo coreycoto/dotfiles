@@ -18,6 +18,8 @@ Homebrew formulae and casks as well as the selected Mise tools. Run either
 command only when the corresponding operation is authorized. Selected global
 CLIs opt into command-triggered update checks every six hours; project
 pins still win. Inspect current configuration before relying on that schedule.
+`dotfiles prune TOOL...` previews Mise's unused-version candidates; its
+`--apply` option requires reviewing untracked projects and rollback needs first.
 Keep status checks offline with automatic installation disabled, and preserve
 existing recovery installations unless their removal is separately requested.
 
