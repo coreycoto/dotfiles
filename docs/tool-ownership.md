@@ -182,6 +182,24 @@ cask upgrades. Automatic Homebrew cleanup is disabled for this command. Run
 `dotfiles status` afterwards to refresh the startup banner. Normal chezmoi
 application preserves unmanaged files and does not uninstall software.
 
+Review accumulated versions periodically with the explicit, offline pruning
+command. It requires tool names and previews by default:
+
+```sh
+dotfiles prune vercel npm:agent-browser npm:neon
+# After reviewing the current candidates and project/rollback needs:
+dotfiles prune --apply vercel npm:agent-browser npm:neon
+```
+
+Mise protects versions selected by its tracked configurations and tool stubs,
+and versions used by running processes. Its inventory is not complete: an
+untracked project, an environment variable, an ad-hoc `mise exec` request or
+an intended rollback may need a version that it proposes to remove. Inspect
+those uses before applying. Apply recomputes the candidates and may differ
+from the preview; use `mise uninstall tool@version` for an exact reviewed list.
+Pruning can also remove version-specific Mise caches. It does not update project
+package dependencies or lockfiles. Automatic pruning remains disabled.
+
 `dotfiles status` reads Mise's installed metadata with `MISE_OFFLINE=1`, never by
 running opted-in tools. It also reads `mise outdated --global --json` and
 Homebrew metadata without installing anything. Missing versions and failed

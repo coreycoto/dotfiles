@@ -17,6 +17,9 @@ def main():
     install.add_argument("--dry-run", action="store_true", help="print the install command without running it")
     update = commands.add_parser("update", help="upgrade Homebrew packages and selected Mise tools")
     update.add_argument("--dry-run", action="store_true", help="preview available upgrades")
+    prune = commands.add_parser("prune", help="review or remove unused versions of named Mise tools")
+    prune.add_argument("--apply", action="store_true", help="remove the versions identified by Mise")
+    prune.add_argument("tools", nargs="+", help="Mise tool names to review")
     commands.add_parser("status", help="check Homebrew and Mise versions and available updates")
     commands.add_parser("check", help="run the checkout's validation suite in a disposable home")
     args = parser.parse_args()
@@ -45,6 +48,11 @@ def main():
                 os.environ[name] = saved
             else:
                 os.environ.pop(name, None)
+
+    if args.command == "prune":
+        script = REPO / "scripts/mise-prune.py"
+        flags = (["--apply"] if args.apply else []) + args.tools
+        os.execv(sys.executable, [sys.executable, str(script), *flags])
 
     script = REPO / "scripts/mise-tools.py"
     flags = ["--update"] if args.command == "update" else []

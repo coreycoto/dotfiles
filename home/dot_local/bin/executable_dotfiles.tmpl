@@ -10,7 +10,7 @@ fi
 # Status and updates are home-level operations. Do not resolve Python
 # from the current project's command directories before the collector can
 # remove those directories from PATH.
-if [[ "${1:-}" == status || "${1:-}" == update ]]; then
+if [[ "${1:-}" == status || "${1:-}" == update || "${1:-}" == prune ]]; then
   if [[ "$1" == update ]]; then
     # Save the caller's actual preferences for the upgrade before applying
     # temporary guards to the Python shim that starts the CLI.
